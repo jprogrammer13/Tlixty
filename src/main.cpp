@@ -16,25 +16,27 @@
 
 #define slc D3
 #define bck D4
+#define bzr D8
 
 // U8G2_ST7920_128X64_1_SW_SPI u8g2(U8G2_R0, /* clock=*/ D5, /* data=*/ D7, /*
 // CS=*/ D2, /*RS=*/ D0);
 U8G2_ST7920_128X64_1_HW_SPI u8g2(U8G2_R0, D2, D0);
 
-const char* ssid = "FRITZ!Box 7490";
-const char* password = "RiccardoBussola13";
+const char* ssid = "TIM-19861131";
+const char* password = "BussolaGay";
 
 WiFiUDP ntpUDP;
+HTTPClient http_client;
 NTPClient timeClient(ntpUDP, "0.it.pool.ntp.org", 3600 /*OFFSET*/);
 
 Encoder myEnc(D1, D2);
 
-Navigation navigation = Navigation(&myEnc, slc, bck); // navigator declaration
+Navigation navigation = Navigation(&myEnc, slc, bck,bzr); // navigator declaration
 
 Boot bootanimation = Boot(&u8g2);
 Home home = Home(&u8g2); // Home declaration
 Menu menu = Menu(&u8g2);
-Weather weather = Weather(&u8g2);
+Weather weather = Weather(&u8g2, &http_client);
 
 PageSystem page_render =
   PageSystem(&home, &menu, &weather); // Page Render System declaration
@@ -58,6 +60,7 @@ setup()
 
   pinMode(slc, INPUT_PULLUP);
   pinMode(bck, INPUT_PULLUP);
+  pinMode(bzr, OUTPUT);
 
   WiFi.begin(ssid, password);
 
@@ -83,6 +86,7 @@ setup()
     t_day = day(epoch);
     t_month = month(epoch);
     t_year = year(epoch);
+    weather.get_data();
   }
 }
 
@@ -101,6 +105,7 @@ loop()
     t_month = month(epoch);
     t_year = year(epoch);
     time_start = millis();
+    weather.get_data();
   }
 
   int nav_event = navigation.read(); // navigation event reading

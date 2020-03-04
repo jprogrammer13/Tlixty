@@ -4,6 +4,9 @@
 #include "graphic.h"
 #include "img.h"
 #include <Arduino.h>
+#include <ArduinoJson.h>
+#include <ESP8266HTTPClient.h>
+#include <Encoder.h>
 #include <SPI.h>
 #include <U8g2lib.h>
 
@@ -32,6 +35,8 @@ enum wf_title // watchface list with int identificator
 {
   DIGITAL = 0
 };
+
+bool sound = 1; // TO DO : Add this to settings struct
 
 int last_page = 0; // variable to remember the rendering page
 
@@ -62,15 +67,17 @@ struct Navigation
   Encoder* e;
   uint8_t slc;
   uint8_t bck;
+  uint8_t bzr;
   int d_time = 120;
 
   // Encoder Object pointer, Select buttun pin, Back button pin
 
-  Navigation(Encoder* encoder, uint8_t select, uint8_t back)
+  Navigation(Encoder* encoder, uint8_t select, uint8_t back, uint8_t buzzer)
   {
     e = encoder;
     slc = select;
     bck = back;
+    bzr = buzzer;
   }
 
   int read()
@@ -91,10 +98,11 @@ struct Navigation
       delay(d_time);
     } else if (btn_slc) {
       result = action(SELECT);
-      delay(d_time);
+      (sound) ? tone(bzr, 2000, d_time) : delay(d_time);
     } else if (btn_bck) {
       result = action(BACK);
-      delay(d_time);
+      (sound) ? tone(bzr, 1800, d_time) : delay(d_time);
+      ;
     } else {
       result = 0;
     }
@@ -191,7 +199,10 @@ struct Home
 
           oled->drawStr(10, 57, months[t_month]);
           oled->drawStr(105, 13, days[t_w_day]);
-          oled->drawStr(119, 26, String(t_day).c_str());
+          oled->drawStr(
+            112,
+            26,
+            (((t_day < 10) ? ("0" + String(t_day)) : String(t_day)).c_str()));
 
           oled->setFontDirection(1);
           oled->drawStr(57, 32, String(t_year).c_str());
@@ -322,20 +333,123 @@ struct Menu
 struct Weather
 {
   U8G2* oled;
+  HTTPClient* client;
 
-  Weather(U8G2* ds) { oled = ds; }
+  String city[3] = { "Pescantina,IT", "Trento,IT" };
+
+  String meteo[11] = { "clear sky",     "few clouds",   "scattered clouds",
+                       "broken clouds", "shower rain",  "rain",
+                       "light rain",    "thunderstorm", "snow",
+                       "mist" };
+
+  int city_selector = 0;
+  int key_condition = 0;
+
+  int d_icon[10] = { 0x0103, 0x07f,  0x07c, 0x07c,  0x00f1,
+                     0x00f1, 0x00f1, 0x07d, 0x009b, 0x00bf };
+
+  int meteo_inf[5] = { 0 /*main_temp*/,
+                       0 /*main_humidity*/,
+                       0 /*main_temp_min*/,
+                       0 /*main_temp_max*/ };
+
+  String payload = "";
+
+  Weather(U8G2* ds, HTTPClient* http)
+  {
+    oled = ds;
+    client = http;
+  }
+
+  void get_data()
+  {
+    key_condition = 0;
+    payload = "";
+
+    String meteo_url = "http://api.openweathermap.org/data/2.5/weather?q=" +
+                       city[city_selector] +
+                       "&appid=6f3d3af7da198e596a118561c69807db&units=metric";
+
+    client->begin(meteo_url);
+
+    int httpCode = client->GET(); // Send the request
+
+    if (payload == "" && httpCode > 0) {
+
+      payload = client->getString(); // Get the request response payload
+      client->end();                 // Close connection
+
+      const size_t capacity = JSON_ARRAY_SIZE(1) + JSON_OBJECT_SIZE(1) +
+                              2 * JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(4) +
+                              JSON_OBJECT_SIZE(5) + JSON_OBJECT_SIZE(6) +
+                              JSON_OBJECT_SIZE(13) + 280;
+      DynamicJsonDocument doc(capacity);
+
+      deserializeJson(doc, payload);
+
+      JsonObject weather_0 = doc["weather"][0];
+      const char* weather_0_description = weather_0["description"];
+      JsonObject main = doc["main"];
+      meteo_inf[0] = int(main["temp"]);
+      meteo_inf[1] = main["humidity"];      // 44
+      meteo_inf[2] = int(main["temp_min"]); // 25.56
+      meteo_inf[3] = int(main["temp_max"]); // 28.89
+
+      while (key_condition < 9) {
+        if (String(weather_0_description) == meteo[key_condition]) {
+          break;
+        } else {
+          key_condition++;
+        }
+      }
+    }
+  }
 
   void render(int navigation)
   {
     oled->firstPage();
     do {
-      oled->setFont(u8g2_font_ncenB14_tr);
-      oled->drawStr(0, 15, "WEATHER");
+
+      /*
+      oled->setFont(u8g2_font_unifont_t_symbols);
+      int m_percent = map(meteo_inf[1], 0, 100, 0, 130);
+      oled->drawRBox(-2, 18, m_percent, 4, 1);
+
+      oled->setCursor(0, 10);
+      oled->print(city[city_selector]);
+
+      oled->setFont(u8g2_font_helvR24_tf);
+      oled->setCursor(55, 60);
+      oled->print(String(meteo_inf[0]));
+      oled->setFont(u8g2_font_open_iconic_all_4x_t);
+      oled->drawGlyph(10, 60, d_icon[key_condition]);
+      */
+
+      oled->setFontMode(0);
+      oled->setDrawColor(1);
+      dithering(85, 0, 43, 64, 50, 1, oled);
+      dithering(0, 0, 128, 21, 75, 1, oled);
+      oled->drawHLine(0, 21, 128);
+
+      oled->setDrawColor(0);
+
+      oled->drawRBox(3, 3, 85, 16, 8);
+      oled->setDrawColor(1);
+
     } while (oled->nextPage());
 
     switch (navigation) {
       case action(BACK):
         last_page = page(HOME);
+        break;
+      case action(SELECT):
+        city_selector =
+          (city_selector == ((sizeof(city) / sizeof(city[0]) - 1)))
+            ? 0
+            : city_selector += 1;
+
+        get_data();
+
         break;
     }
   }
