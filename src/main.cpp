@@ -16,30 +16,30 @@
 
 #define slc D3
 #define bck D4
-#define bzr D8
+#define bzr D6
 
 // U8G2_ST7920_128X64_1_SW_SPI u8g2(U8G2_R0, /* clock=*/ D5, /* data=*/ D7, /*
 // CS=*/ D2, /*RS=*/ D0);
-U8G2_ST7920_128X64_1_HW_SPI u8g2(U8G2_R0, D2, D0);
+U8G2_ST7920_128X64_1_HW_SPI u8g2(U8G2_R0, D8, D0);
 
-const char* ssid = "TIM-19861131";
-const char* password = "BussolaGay";
+const char *ssid = "FRITZ!Box 7490";
+const char *password = "RiccardoBussola13";
 
 WiFiUDP ntpUDP;
 HTTPClient http_client;
-NTPClient timeClient(ntpUDP, "0.it.pool.ntp.org", 3600 /*OFFSET*/);
+NTPClient timeClient(ntpUDP, "0.it.pool.ntp.org", 7200 /*OFFSET*/);
 
 Encoder myEnc(D1, D2);
-
-Navigation navigation = Navigation(&myEnc, slc, bck,bzr); // navigator declaration
+Navigation navigation = Navigation(&myEnc, slc, bck, bzr); // navigator declaration
 
 Boot bootanimation = Boot(&u8g2);
 Home home = Home(&u8g2); // Home declaration
 Menu menu = Menu(&u8g2);
+Alarm alarm = Alarm(&u8g2, bzr);
 Weather weather = Weather(&u8g2, &http_client);
 
 PageSystem page_render =
-  PageSystem(&home, &menu, &weather); // Page Render System declaration
+    PageSystem(&home, &menu, &alarm, &weather); // Page Render System declaration
 
 int h = 0;
 int m = 0;
@@ -49,11 +49,9 @@ int t_month = 0;
 int t_year = 0;
 int epoch = 0;
 
-void
-setup()
+void setup()
 {
   u8g2.begin();
-
   bootanimation.render(); // bootanimation
 
   Serial.begin(115200);
@@ -66,17 +64,22 @@ setup()
 
   unsigned long start_c = millis();
   unsigned long soglia =
-    300000; // soglia di controllo per passare il AP (default 25s)
+      300000; // soglia di controllo per passare il AP (default 25s)
 
-  while (WiFi.status() != WL_CONNECTED) {
-    if (millis() - start_c < soglia) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    if (millis() - start_c < soglia)
+    {
       delay(500);
-    } else {
+    }
+    else
+    {
       break;
     }
   }
 
-  if (WiFi.status() == WL_CONNECTED) {
+  if (WiFi.status() == WL_CONNECTED)
+  {
     timeClient.begin();
     timeClient.update();
     h = timeClient.getHours();
@@ -91,11 +94,13 @@ setup()
 }
 
 unsigned long time_start = millis();
+unsigned long time_allert = millis();
 
-void
-loop()
+void loop()
 {
-  if ((millis() - time_start) >= 10000) {
+
+  if ((millis() - time_start) >= 10000)
+  {
     timeClient.update();
     h = timeClient.getHours();
     m = timeClient.getMinutes();
@@ -106,6 +111,12 @@ loop()
     t_year = year(epoch);
     time_start = millis();
     weather.get_data();
+  }
+
+  if ((millis() - time_start) >= 120000)
+  {
+    time_allert = millis();
+    alarm_off = 0;
   }
 
   int nav_event = navigation.read(); // navigation event reading

@@ -16,10 +16,12 @@ enum page // page list with int identificator
   MENU = 1,
   SETTINGS = 2,
   WATCHFACE = 3,
-  WEATHER = 4,
-  STOPWATCH = 5,
-  TIMER = 6,
-  MUSIC = 7
+  ALARM = 4,
+  WEATHER = 5,
+  STOPWATCH = 6,
+  TIMER = 7,
+  MUSIC = 8,
+  ALERT = 9
 
 };
 
@@ -39,17 +41,19 @@ enum wf_title // watchface list with int identificator
 bool sound = 1; // TO DO : Add this to settings struct
 
 int last_page = 0; // variable to remember the rendering page
+bool alarm_off = 0;
 
 struct Boot
 {
-  U8G2* oled;
+  U8G2 *oled;
 
-  Boot(U8G2* ds) { oled = ds; }
+  Boot(U8G2 *ds) { oled = ds; }
 
   void render()
   {
     oled->firstPage();
-    do {
+    do
+    {
       oled->setFont(u8g2_font_ncenB14_tr);
       oled->setBitmapMode(1);
       oled->drawXBMP(33, 2, 61, 60, logo);
@@ -64,7 +68,7 @@ struct Boot
 
 struct Navigation
 {
-  Encoder* e;
+  Encoder *e;
   uint8_t slc;
   uint8_t bck;
   uint8_t bzr;
@@ -72,7 +76,7 @@ struct Navigation
 
   // Encoder Object pointer, Select buttun pin, Back button pin
 
-  Navigation(Encoder* encoder, uint8_t select, uint8_t back, uint8_t buzzer)
+  Navigation(Encoder *encoder, uint8_t select, uint8_t back, uint8_t buzzer)
   {
     e = encoder;
     slc = select;
@@ -90,20 +94,29 @@ struct Navigation
 
     int result = 0;
 
-    if (knob > 0) {
+    if (knob > 1)
+    {
       result = action(RIGHT);
       delay(d_time);
-    } else if (knob < 0) {
+    }
+    else if (knob < -1)
+    {
       result = action(LEFT);
       delay(d_time);
-    } else if (btn_slc) {
+    }
+    else if (btn_slc)
+    {
       result = action(SELECT);
-      (sound) ? tone(bzr, 2000, d_time) : delay(d_time);
-    } else if (btn_bck) {
+      (sound) ? tone(bzr, 2000, d_time) : delay(d_time * 4);
+    }
+    else if (btn_bck)
+    {
       result = action(BACK);
-      (sound) ? tone(bzr, 1800, d_time) : delay(d_time);
+      (sound) ? tone(bzr, 1800, d_time) : delay(d_time * 4);
       ;
-    } else {
+    }
+    else
+    {
       result = 0;
     }
 
@@ -124,7 +137,7 @@ struct Home
 
   int wtf; // watchface selected
 
-  U8G2* oled;
+  U8G2 *oled;
 
   int hour;
   int min;
@@ -135,7 +148,7 @@ struct Home
 
   // U8G2 pointer to manage the display
 
-  Home(U8G2* ds)
+  Home(U8G2 *ds)
   {
     oled = ds;
     wtf = wf_title(DIGITAL);
@@ -165,65 +178,67 @@ struct Home
   void render(int navigation)
   {
     oled->firstPage();
-    do {
+    do
+    {
 
       switch (wtf) // read the setted watchface
       {
 
-        case wf_title(DIGITAL):
-          oled->setFontMode(1);
+      case wf_title(DIGITAL):
+        oled->setFontMode(1);
 
-          oled->setDrawColor(1);
+        oled->setDrawColor(1);
 
-          dithering(0, 0, 128, 64, 50, 1, oled);
-          oled->drawBox(55, 0, 73, 64);
-          oled->setFont(u8g2_font_7x14B_tf);
+        dithering(0, 0, 128, 64, 50, 1, oled);
+        oled->drawBox(55, 0, 73, 64);
+        oled->setFont(u8g2_font_7x14B_tf);
 
-          char* days[7] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
-          char* months[14] = { "",    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+        char *days[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+        char *months[14] = {"", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
-          oled->drawRBox(3, 45, 35, 14, 7);
+        oled->drawRBox(3, 45, 35, 14, 7);
 
-          oled->setDrawColor(0);
+        oled->setDrawColor(0);
 
-          oled->setFont(u8g2_font_helvR24_te);
-          oled->drawStr(
+        oled->setFont(u8g2_font_helvR24_te);
+        oled->drawStr(
             60,
             28,
             (((hour < 10) ? ("0" + String(hour)) : String(hour)).c_str()));
-          oled->drawStr(
+        oled->drawStr(
             90, 58, (((min < 10) ? ("0" + String(min)) : String(min)).c_str()));
 
-          oled->setFont(u8g2_font_7x14B_tf);
+        oled->setFont(u8g2_font_7x14B_tf);
 
-          oled->drawStr(10, 57, months[t_month]);
-          oled->drawStr(105, 13, days[t_w_day]);
-          oled->drawStr(
+        oled->drawStr(10, 57, months[t_month]);
+        oled->drawStr(105, 13, days[t_w_day]);
+        oled->drawStr(
             112,
             26,
             (((t_day < 10) ? ("0" + String(t_day)) : String(t_day)).c_str()));
 
-          oled->setFontDirection(1);
-          oled->drawStr(57, 32, String(t_year).c_str());
-          oled->setFontDirection(0);
+        oled->setFontDirection(1);
+        oled->drawStr(57, 32, String(t_year).c_str());
+        oled->setFontDirection(0);
 
-          oled->setDrawColor(1);
+        oled->setDrawColor(1);
 
-          break;
+        break;
       }
 
     } while (oled->nextPage());
 
     // manage the input events - redirect to other pages
 
-    switch (navigation) {
-      case action(SELECT):
-        last_page = page(MENU);
-        break;
-      case action(LEFT):
-        last_page = page(WEATHER);
-        break;
+    switch (navigation)
+    {
+    case action(SELECT):
+      last_page = page(MENU);
+      break;
+    case action(LEFT):
+      last_page = page(WEATHER);
+      break;
     }
   }
 };
@@ -235,10 +250,10 @@ struct Home
 
 struct Menu
 {
-  U8G2* oled;
+  U8G2 *oled;
 
-  char* m_list[6] = { "Settings",  "WatchFace", "Weather",
-                      "Stopwatch", "Timer",     "Music" }; // page's title list
+  char *m_list[7] = {"Settings", "WatchFace", "Alarm", "Weather",
+                     "Stopwatch", "Timer", "Music"}; // page's title list
 
   /*    JUST TO UNDERSTAND THE PAGE POSITION (m_position+2)
 
@@ -246,25 +261,25 @@ struct Menu
   {
     SETTINGS = 2,
     WATCHFACE = 3,
-    WEATHER = 4,
-    STOPWATCH = 5,
-    TIMER = 6,
-    MUSIC = 7
+    ALARM = 4,
+    WEATHER = 5,
+    STOPWATCH = 6,
+    TIMER = 7,
+    MUSIC = 8
   };
   */
 
-  int icon[6] = {
-    0X2751, 0X23F2, 0x2603, 0x23f1, 0x23f3, 0x23f8
-  }; // page's icon list
+  int icon[7] = {
+      0X2751, 0X23F2, 0X23F0, 0x2603, 0x23F1, 0x23F3, 0x23F8}; // page's icon list
 
   int max_val = sizeof(m_list) / sizeof(m_list[0]) - 1; // max value to show
 
   int m_position = 0;
-  int cordinate[4] = { 16, 37, 57 };
+  int cordinate[4] = {16, 37, 57};
 
   // U8G2 pointer to manage the display
 
-  Menu(U8G2* ds) { oled = ds; }
+  Menu(U8G2 *ds) { oled = ds; }
 
   // this function render the menu ui, manage the input event and redirect to
   // other pages
@@ -273,35 +288,44 @@ struct Menu
   {
     oled->firstPage();
     oled->setFont(u8g2_font_unifont_t_symbols);
-    do {
+    do
+    {
       oled->setFontMode(0);
 
-      if (m_position == 0) {
+      if (m_position == 0)
+      {
         oled->setDrawColor(1); /* color 1 for the box */
         oled->drawBox(0, 0, 128, 21);
 
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 3; i++)
+        {
           (i == 0) ? oled->setDrawColor(0) : oled->setDrawColor(1);
           oled->drawGlyph(0, cordinate[i], icon[i]);
           oled->setCursor(17, cordinate[i]);
           oled->print(m_list[i]);
         }
-      } else if (m_position == max_val) {
+      }
+      else if (m_position == max_val)
+      {
         oled->setDrawColor(1); /* color 1 for the box */
         oled->drawBox(0, 42, 128, 21);
 
-        for (int i = max_val, j = 2; i > max_val - 3, j >= 0; i--, j--) {
+        for (int i = max_val, j = 2; i > max_val - 3, j >= 0; i--, j--)
+        {
           (i == max_val) ? oled->setDrawColor(0) : oled->setDrawColor(1);
           oled->drawGlyph(0, cordinate[j], icon[i]);
           oled->setCursor(17, cordinate[j]);
           oled->print(m_list[i]);
         }
-      } else {
+      }
+      else
+      {
         oled->setDrawColor(1); /* color 1 for the box */
         oled->drawBox(0, 21, 128, 21);
 
         for (int i = m_position - 1, j = 0; i < m_position + 2, j < 3;
-             i++, j++) {
+             i++, j++)
+        {
           (i == m_position) ? oled->setDrawColor(0) : oled->setDrawColor(1);
           oled->drawGlyph(0, cordinate[j], icon[i]);
           oled->setCursor(17, cordinate[j]);
@@ -310,52 +334,184 @@ struct Menu
       }
     } while (oled->nextPage());
 
-    switch (navigation) {
-      case action(BACK):
-        last_page = page(HOME);
-        break;
-      case action(RIGHT):
-        if (m_position < max_val) {
-          m_position++;
+    switch (navigation)
+    {
+    case action(BACK):
+      last_page = page(HOME);
+      break;
+    case action(RIGHT):
+      if (m_position < max_val)
+      {
+        m_position++;
+      }
+      break;
+    case action(LEFT):
+      if (m_position > 0)
+      {
+        m_position--;
+      }
+      break;
+    case action(SELECT):
+      last_page = m_position + 2;
+    }
+  }
+};
+
+/**
+ *  struct : Home
+ *  description: This struct is the home page, it renders the watchface, manage
+ *               input events and redirect other pages rendering
+ **/
+
+struct Alarm
+{
+
+  int wtf; // watchface selected
+
+  U8G2 *oled;
+  uint8 bzr;
+
+  int hour[2] = {9, 15};
+  int min[2] = {15, 0};
+  String t_w_day[2] = {"12345", "12345"};
+
+  // U8G2 pointer to manage the display
+
+  Alarm(U8G2 *ds, uint8 bz)
+  {
+    oled = ds;
+    bzr = bz;
+  }
+
+  void alert(int navigation)
+  {
+
+    if (!alarm_off)
+    {
+      randomSeed(analogRead(D0));
+      unsigned int random_tone = random(1000, 20000);
+      tone(bzr, random_tone , 500);
+    }
+
+    oled->firstPage();
+    do
+    {
+      oled->setFont(u8g2_font_unifont_t_symbols);
+
+      oled->drawGlyph(15,25, 0X23F0);
+      oled->setCursor(40,25);
+      oled->print("SVEGLIAA!");
+      oled->setCursor(5,45);
+      oled->print("E`giunta l'ora!");
+
+    } while (oled->nextPage());
+
+    // manage the input events - redirect to other pages
+
+    switch (navigation)
+    {
+    case action(SELECT):
+      last_page = page(HOME);
+      alarm_off = 1;
+      break;
+    }
+  }
+
+  void alarm_check(int m, int h, int t_w_d, int navigation)
+  {
+    bool is_time = 0;
+    bool is_day = 0;
+
+    for (int i = 0; i < sizeof(hour) / sizeof(hour[0]); i++)
+    {
+      //Serial.println(String(hour[i]) + ":" + String(min[i]));
+
+      if (hour[i] == h)
+      {
+        if (min[i] == m)
+        {
+          is_time = 1;
+
+          is_day = 0;
+          for (int j = 0; j < t_w_day[i].length(); j++)
+          {
+            if (t_w_day[i].charAt(j) == char(48 + t_w_d))
+            {
+
+              is_day = 1;
+              j = 5;
+            }
+          }
         }
-        break;
-      case action(LEFT):
-        if (m_position > 0) {
-          m_position--;
-        }
-        break;
-      case action(SELECT):
-        last_page = m_position + 2;
+      }
+    }
+
+    if (is_time && is_day)
+    {
+      if (!alarm_off)
+      {
+        last_page = page(ALERT);
+      }
+    }
+  }
+
+  // function to read input events, render the selected watchface and redirect
+  // to other pages
+
+  void render(int navigation)
+  {
+    oled->firstPage();
+    do
+    {
+
+      dithering(0, 0, 128, 64, 50, 1, oled);
+      oled->setFont(u8g2_font_7x14B_tf);
+
+    } while (oled->nextPage());
+
+    // manage the input events - redirect to other pages
+
+    switch (navigation)
+    {
+      /*case action(SELECT):
+      last_page = page(MENU);
+      break;
+    case action(LEFT):
+      last_page = page(WEATHER);
+      break;*/
+    case action(BACK):
+      last_page = page(MENU);
+      break;
     }
   }
 };
 
 struct Weather
 {
-  U8G2* oled;
-  HTTPClient* client;
+  U8G2 *oled;
+  HTTPClient *client;
 
-  String city[3] = { "Pescantina,IT", "Trento,IT" };
+  String city[2] = {"Pescantina,IT", "Trento,IT"};
 
-  String meteo[11] = { "clear sky",     "few clouds",   "scattered clouds",
-                       "broken clouds", "shower rain",  "rain",
-                       "light rain",    "thunderstorm", "snow",
-                       "mist" };
+  String meteo[11] = {"clear sky", "few clouds", "scattered clouds",
+                      "broken clouds", "shower rain", "rain",
+                      "light rain", "thunderstorm", "snow",
+                      "mist"};
 
   int city_selector = 0;
   int key_condition = 0;
 
-  int d_icon[10] = { 0x0103, 0x07f,  0x07c, 0x07c,  0x00f1,
-                     0x00f1, 0x00f1, 0x07d, 0x009b, 0x00bf };
+  int d_icon[10] = {0x0103, 0x07f, 0x07c, 0x07c, 0x00f1,
+                    0x00f1, 0x00f1, 0x07d, 0x009b, 0x00bf};
 
-  int meteo_inf[5] = { 0 /*main_temp*/,
-                       0 /*main_humidity*/,
-                       0 /*main_temp_min*/,
-                       0 /*main_temp_max*/ };
+  int meteo_inf[5] = {0 /*main_temp*/,
+                      0 /*main_humidity*/,
+                      0 /*main_temp_min*/,
+                      0 /*main_temp_max*/};
 
   String payload = "";
 
-  Weather(U8G2* ds, HTTPClient* http)
+  Weather(U8G2 *ds, HTTPClient *http)
   {
     oled = ds;
     client = http;
@@ -374,7 +530,8 @@ struct Weather
 
     int httpCode = client->GET(); // Send the request
 
-    if (payload == "" && httpCode > 0) {
+    if (payload == "" && httpCode > 0)
+    {
 
       payload = client->getString(); // Get the request response payload
       client->end();                 // Close connection
@@ -388,17 +545,21 @@ struct Weather
       deserializeJson(doc, payload);
 
       JsonObject weather_0 = doc["weather"][0];
-      const char* weather_0_description = weather_0["description"];
+      const char *weather_0_description = weather_0["description"];
       JsonObject main = doc["main"];
       meteo_inf[0] = int(main["temp"]);
       meteo_inf[1] = main["humidity"];      // 44
       meteo_inf[2] = int(main["temp_min"]); // 25.56
       meteo_inf[3] = int(main["temp_max"]); // 28.89
 
-      while (key_condition < 9) {
-        if (String(weather_0_description) == meteo[key_condition]) {
+      while (key_condition < 9)
+      {
+        if (String(weather_0_description) == meteo[key_condition])
+        {
           break;
-        } else {
+        }
+        else
+        {
           key_condition++;
         }
       }
@@ -408,9 +569,9 @@ struct Weather
   void render(int navigation)
   {
     oled->firstPage();
-    do {
+    do
+    {
 
-      /*
       oled->setFont(u8g2_font_unifont_t_symbols);
       int m_percent = map(meteo_inf[1], 0, 100, 0, 130);
       oled->drawRBox(-2, 18, m_percent, 4, 1);
@@ -423,8 +584,8 @@ struct Weather
       oled->print(String(meteo_inf[0]));
       oled->setFont(u8g2_font_open_iconic_all_4x_t);
       oled->drawGlyph(10, 60, d_icon[key_condition]);
-      */
 
+      /*
       oled->setFontMode(0);
       oled->setDrawColor(1);
       dithering(85, 0, 43, 64, 50, 1, oled);
@@ -435,22 +596,23 @@ struct Weather
 
       oled->drawRBox(3, 3, 85, 16, 8);
       oled->setDrawColor(1);
-
+      */
     } while (oled->nextPage());
 
-    switch (navigation) {
-      case action(BACK):
-        last_page = page(HOME);
-        break;
-      case action(SELECT):
-        city_selector =
+    switch (navigation)
+    {
+    case action(BACK):
+      last_page = page(HOME);
+      break;
+    case action(SELECT):
+      city_selector =
           (city_selector == ((sizeof(city) / sizeof(city[0]) - 1)))
-            ? 0
-            : city_selector += 1;
+              ? 0
+              : city_selector += 1;
 
-        get_data();
+      get_data();
 
-        break;
+      break;
     }
   }
 };
@@ -458,15 +620,17 @@ struct Weather
 struct PageSystem
 {
 
-  Home* home;
-  Menu* menu;
-  Weather* weather;
+  Home *home;
+  Menu *menu;
+  Weather *weather;
+  Alarm *alarm;
 
-  PageSystem(Home* h, Menu* m, Weather* w)
+  PageSystem(Home *h, Menu *m, Alarm *a, Weather *w)
   {
     last_page = page(HOME);
     home = h;
     menu = m;
+    alarm = a;
     weather = w;
   }
 
@@ -478,22 +642,31 @@ struct PageSystem
               int t_month,
               int t_year)
   {
-    switch (last_page) {
-      case HOME:
-        home->set_time(minute, hour, t_w_day, t_day, t_month, t_year);
-        home->render(navigation);
-        break;
-      case MENU:
-        menu->render(navigation);
-        break;
-      case WEATHER:
-        weather->render(navigation);
-        break;
-      default:
-        home->set_time(minute, hour, t_w_day, t_day, t_month, t_year);
-        home->render(navigation);
-        Serial.println(page(last_page));
-        break;
+    alarm->alarm_check(minute, hour, t_w_day, navigation);
+
+    switch (last_page)
+    {
+    case HOME:
+      home->set_time(minute, hour, t_w_day, t_day, t_month, t_year);
+      home->render(navigation);
+      break;
+    case MENU:
+      menu->render(navigation);
+      break;
+    case ALARM:
+      alarm->render(navigation);
+      break;
+    case ALERT:
+      alarm->alert(navigation);
+      break;
+    case WEATHER:
+      weather->render(navigation);
+      break;
+    default:
+      home->set_time(minute, hour, t_w_day, t_day, t_month, t_year);
+      home->render(navigation);
+      Serial.println(page(last_page));
+      break;
     }
   }
 };
