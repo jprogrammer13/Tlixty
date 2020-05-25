@@ -107,12 +107,12 @@ struct Navigation
     else if (btn_slc)
     {
       result = action(SELECT);
-      (sound) ? tone(bzr, 2000, d_time) : delay(d_time * 4);
+      (sound) ? tone(bzr, 2000, d_time) : delay(d_time * 6);
     }
     else if (btn_bck)
     {
       result = action(BACK);
-      (sound) ? tone(bzr, 1800, d_time) : delay(d_time * 4);
+      (sound) ? tone(bzr, 1800, d_time) : delay(d_time * 6);
       ;
     }
     else
@@ -371,9 +371,14 @@ struct Alarm
   U8G2 *oled;
   uint8 bzr;
 
-  int hour[2] = {9, 15};
-  int min[2] = {15, 0};
-  String t_w_day[2] = {"12345", "12345"};
+  int hour[3] = {8, 16, 16};
+  int min[3] = {15, 45, 0};
+  String t_w_day[3] = {"12345", "0123456", "12345"};
+
+  int max_val = sizeof(hour) / sizeof(hour[0]) - 1; // max value to show
+
+  int m_position = 0;
+  int cordinate[4] = {16, 37, 57};
 
   // U8G2 pointer to manage the display
 
@@ -390,7 +395,7 @@ struct Alarm
     {
       randomSeed(analogRead(D0));
       unsigned int random_tone = random(1000, 20000);
-      tone(bzr, random_tone , 500);
+      tone(bzr, random_tone, 500);
     }
 
     oled->firstPage();
@@ -398,10 +403,10 @@ struct Alarm
     {
       oled->setFont(u8g2_font_unifont_t_symbols);
 
-      oled->drawGlyph(15,25, 0X23F0);
-      oled->setCursor(40,25);
+      oled->drawGlyph(15, 25, 0X23F0);
+      oled->setCursor(40, 25);
       oled->print("SVEGLIAA!");
-      oled->setCursor(5,45);
+      oled->setCursor(5, 45);
       oled->print("E`giunta l'ora!");
 
     } while (oled->nextPage());
@@ -441,16 +446,16 @@ struct Alarm
               is_day = 1;
               j = 5;
             }
+
+            if (is_time && is_day)
+            {
+              if (!alarm_off)
+              {
+                last_page = page(ALERT);
+              }
+            }
           }
         }
-      }
-    }
-
-    if (is_time && is_day)
-    {
-      if (!alarm_off)
-      {
-        last_page = page(ALERT);
       }
     }
   }
@@ -463,9 +468,64 @@ struct Alarm
     oled->firstPage();
     do
     {
+      oled->setFontMode(0);
+      String sveglia = "";
 
-      dithering(0, 0, 128, 64, 50, 1, oled);
-      oled->setFont(u8g2_font_7x14B_tf);
+      if (m_position == 0)
+      {
+        oled->setDrawColor(1); /* color 1 for the box */
+        oled->drawBox(0, 0, 128, 21);
+
+        for (int i = 0; i < 3; i++)
+        {
+          sveglia = String(hour[i]) + ":" + String(min[i]);
+          (i == 0) ? oled->setDrawColor(0) : oled->setDrawColor(1);
+          for (int j = 0; j < t_w_day[i].length() - 1; j++)
+          {
+            oled->drawDisc(50 + (13 * j), cordinate[i] - 5, 4, U8G2_DRAW_ALL);
+          }
+          //oled->drawGlyph(0, cordinate[i], icon[i]);
+          oled->setCursor(2, cordinate[i]);
+          oled->print(sveglia);
+        }
+      }
+      else if (m_position == max_val)
+      {
+        oled->setDrawColor(1); /* color 1 for the box */
+        oled->drawBox(0, 42, 128, 21);
+
+        for (int i = max_val, j = 2; i > max_val - 3, j >= 0; i--, j--)
+        {
+          sveglia = String(hour[i]) + ":" + String(min[i]);
+          (i == max_val) ? oled->setDrawColor(0) : oled->setDrawColor(1);
+          for (int j = 0; j < t_w_day[i].length() - 1; j++)
+          {
+            oled->drawDisc(50 + (13 * j), cordinate[i] - 5, 4, U8G2_DRAW_ALL);
+          }
+          //oled->drawGlyph(0, cordinate[j], icon[i]);
+          oled->setCursor(2, cordinate[j]);
+          oled->print(sveglia);
+        }
+      }
+      else
+      {
+        oled->setDrawColor(1); /* color 1 for the box */
+        oled->drawBox(0, 21, 128, 21);
+
+        for (int i = m_position - 1, j = 0; i < m_position + 2, j < 3;
+             i++, j++)
+        {
+          sveglia = String(hour[i]) + ":" + String(min[i]);
+          (i == m_position) ? oled->setDrawColor(0) : oled->setDrawColor(1);
+          for (int j = 0; j < t_w_day[i].length() - 1; j++)
+          {
+            oled->drawDisc(50 + (13 * j), cordinate[i] - 5, 4, U8G2_DRAW_ALL);
+          }
+          //oled->drawGlyph(0, cordinate[j], icon[i]);
+          oled->setCursor(2, cordinate[j]);
+          oled->print(sveglia);
+        }
+      }
 
     } while (oled->nextPage());
 
@@ -473,12 +533,18 @@ struct Alarm
 
     switch (navigation)
     {
-      /*case action(SELECT):
-      last_page = page(MENU);
+    case action(RIGHT):
+      if (m_position < max_val)
+      {
+        m_position++;
+      }
       break;
     case action(LEFT):
-      last_page = page(WEATHER);
-      break;*/
+      if (m_position > 0)
+      {
+        m_position--;
+      }
+      break;
     case action(BACK):
       last_page = page(MENU);
       break;

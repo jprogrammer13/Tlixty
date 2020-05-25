@@ -113,7 +113,7 @@ void loop()
     weather.get_data();
   }
 
-  if ((millis() - time_start) >= 120000)
+  if ((millis() - time_allert) >= 120000)
   {
     time_allert = millis();
     alarm_off = 0;
