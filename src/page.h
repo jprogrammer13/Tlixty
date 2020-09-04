@@ -3,6 +3,7 @@
 
 #include "graphic.h"
 #include "img.h"
+#include "icon.h"
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <ESP8266HTTPClient.h>
@@ -21,7 +22,8 @@ enum page // page list with int identificator
   STOPWATCH = 6,
   TIMER = 7,
   MUSIC = 8,
-  ALERT = 9
+  ALERT = 9,
+  NOTIFY = 10
 
 };
 
@@ -38,7 +40,7 @@ enum wf_title // watchface list with int identificator
   DIGITAL = 0
 };
 
-bool sound = 1; // TO DO : Add this to settings struct
+bool sound = 0; // TO DO : Add this to settings struct
 
 int last_page = 0; // variable to remember the rendering page
 bool alarm_off = 0;
@@ -72,7 +74,7 @@ struct Navigation
   uint8_t slc;
   uint8_t bck;
   uint8_t bzr;
-  int d_time = 120;
+  int d_time = 100;
 
   // Encoder Object pointer, Select buttun pin, Back button pin
 
@@ -107,13 +109,14 @@ struct Navigation
     else if (btn_slc)
     {
       result = action(SELECT);
-      (sound) ? tone(bzr, 2000, d_time) : delay(d_time * 6);
+      (sound) ? tone(bzr, 2000, d_time) : delay(d_time);
+      delay(d_time);
     }
     else if (btn_bck)
     {
       result = action(BACK);
-      (sound) ? tone(bzr, 1800, d_time) : delay(d_time * 6);
-      ;
+      (sound) ? tone(bzr, 1800, d_time) : delay(d_time);
+      delay(d_time);
     }
     else
     {
@@ -244,6 +247,127 @@ struct Home
 };
 
 /**
+ *  struct : Settings
+ *  description: This struct implement a settings menu
+ **/
+
+struct Settings
+{
+  U8G2 *oled;
+
+  char *s_list[7] = {"CIAO2", "CIAO2", "CIAO3", "CIAO4",
+                     "CIAO5", "CIAO6", "CIAO7"}; // page's title list
+
+  /*    JUST TO UNDERSTAND THE PAGE POSITION (m_position+2)
+
+  enum page_list
+  {
+    SETTINGS = 2,
+    WATCHFACE = 3,
+    ALARM = 4,
+    WEATHER = 5,
+    STOPWATCH = 6,
+    TIMER = 7,
+    MUSIC = 8
+  };
+  */
+
+  int icon[7] = {
+      0X2751, 0X23F2, 0X23F0, 0x2603, 0x23F1, 0x23F3, 0x23F8}; // page's icon list
+
+  int max_val = sizeof(s_list) / sizeof(s_list[0]) - 1; // max value to show
+
+  int s_position = 0;
+  int cordinate[4] = {16, 37, 57};
+
+  // U8G2 pointer to manage the display
+
+  Settings(U8G2 *ds) { oled = ds; }
+
+  // this function render the menu ui, manage the input event and redirect to
+  // other pages
+
+  void render(int navigation)
+  {
+    oled->firstPage();
+    //oled->setFont(u8g2_font_unifont_t_symbols);
+    oled->setFont(u8g2_font_7x14_tf);
+    do
+    {
+      oled->setFontMode(0);
+
+      if (s_position == 0)
+      {
+        oled->setDrawColor(1); /* color 1 for the box */
+        oled->drawBox(0, 0, 128, 21);
+
+        for (int i = 0; i < 3; i++)
+        {
+          (i == 0) ? oled->setDrawColor(0) : oled->setDrawColor(1);
+          oled->setFont(u8g2_font_unifont_t_symbols);
+          oled->drawGlyph(3, cordinate[i], icon[i]);
+          oled->setFont(u8g2_font_7x14_tf);
+          oled->setCursor(23, cordinate[i]);
+          oled->print(s_list[i]);
+        }
+      }
+      else if (s_position == max_val)
+      {
+        oled->setDrawColor(1); /* color 1 for the box */
+        oled->drawBox(0, 42, 128, 21);
+
+        for (int i = max_val, j = 2; i > max_val - 3, j >= 0; i--, j--)
+        {
+          (i == max_val) ? oled->setDrawColor(0) : oled->setDrawColor(1);
+          oled->setFont(u8g2_font_unifont_t_symbols);
+          oled->drawGlyph(3, cordinate[j], icon[i]);
+          oled->setFont(u8g2_font_7x14_tf);
+          oled->setCursor(23, cordinate[j]);
+          oled->print(s_list[i]);
+        }
+      }
+      else
+      {
+        oled->setDrawColor(1); /* color 1 for the box */
+        oled->drawBox(0, 21, 128, 21);
+
+        for (int i = s_position - 1, j = 0; i < s_position + 2, j < 3;
+             i++, j++)
+        {
+          (i == s_position) ? oled->setDrawColor(0) : oled->setDrawColor(1);
+          oled->setFont(u8g2_font_unifont_t_symbols);
+          oled->drawGlyph(3, cordinate[j], icon[i]);
+          oled->setFont(u8g2_font_7x14_tf);
+          oled->setCursor(23, cordinate[j]);
+          oled->print(s_list[i]);
+        }
+      }
+    } while (oled->nextPage());
+
+    switch (navigation)
+    {
+    case action(BACK):
+      last_page = page(MENU);
+      break;
+    case action(RIGHT):
+      if (s_position < max_val)
+      {
+        s_position++;
+      }
+      break;
+    case action(LEFT):
+      if (s_position > 0)
+      {
+        s_position--;
+      }
+      break;
+    case action(SELECT):
+      last_page = s_position + 2;
+    }
+  }
+};
+
+/**
  *  struct : Menu
  *  description: This struct implement an app menu
  **/
@@ -287,7 +411,8 @@ struct Menu
   void render(int navigation)
   {
     oled->firstPage();
-    oled->setFont(u8g2_font_unifont_t_symbols);
+    //oled->setFont(u8g2_font_unifont_t_symbols);
+    oled->setFont(u8g2_font_7x14_tf);
     do
     {
       oled->setFontMode(0);
@@ -300,8 +425,10 @@ struct Menu
         for (int i = 0; i < 3; i++)
         {
           (i == 0) ? oled->setDrawColor(0) : oled->setDrawColor(1);
-          oled->drawGlyph(0, cordinate[i], icon[i]);
-          oled->setCursor(17, cordinate[i]);
+          oled->setFont(u8g2_font_unifont_t_symbols);
+          oled->drawGlyph(3, cordinate[i], icon[i]);
+          oled->setFont(u8g2_font_7x14_tf);
+          oled->setCursor(23, cordinate[i]);
           oled->print(m_list[i]);
         }
       }
@@ -313,8 +440,10 @@ struct Menu
         for (int i = max_val, j = 2; i > max_val - 3, j >= 0; i--, j--)
         {
           (i == max_val) ? oled->setDrawColor(0) : oled->setDrawColor(1);
-          oled->drawGlyph(0, cordinate[j], icon[i]);
-          oled->setCursor(17, cordinate[j]);
+          oled->setFont(u8g2_font_unifont_t_symbols);
+          oled->drawGlyph(3, cordinate[j], icon[i]);
+          oled->setFont(u8g2_font_7x14_tf);
+          oled->setCursor(23, cordinate[j]);
           oled->print(m_list[i]);
         }
       }
@@ -327,8 +456,10 @@ struct Menu
              i++, j++)
         {
           (i == m_position) ? oled->setDrawColor(0) : oled->setDrawColor(1);
-          oled->drawGlyph(0, cordinate[j], icon[i]);
-          oled->setCursor(17, cordinate[j]);
+          oled->setFont(u8g2_font_unifont_t_symbols);
+          oled->drawGlyph(3, cordinate[j], icon[i]);
+          oled->setFont(u8g2_font_7x14_tf);
+          oled->setCursor(23, cordinate[j]);
           oled->print(m_list[i]);
         }
       }
@@ -358,10 +489,215 @@ struct Menu
 };
 
 /**
- *  struct : Home
- *  description: This struct is the home page, it renders the watchface, manage
- *               input events and redirect other pages rendering
+ *  struct : Notification
+ *  description: 
  **/
+
+struct Notification
+{
+  U8G2 *oled;
+  uint8 bzr;
+  int y_position;
+  unsigned long time_start;
+  int titolo_size;
+  int text_size;
+  String id;
+  String title;
+  String text;
+  String linee[16] = {
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""};
+
+  Notification(U8G2 *ds, uint8 bz)
+  {
+    oled = ds;
+    y_position = 0;
+    time_start = 0;
+    bzr = bz;
+    titolo_size = 0;
+    text_size = 0;
+  }
+
+  void split_text(int size)
+  {
+    int counter = 0;
+    String buffer = "";      //to store word
+    String text_buffer = ""; //to store multiple words
+
+    for (int i = 0; i <= text.length(); i++)
+    {
+      char carattere = text.charAt(i);
+
+      if (carattere != ' ' & i != text.length())
+      {
+        buffer += String(carattere);
+      }
+      else
+      {
+        if (i == text.length() && counter < 10 && buffer.length() < size)
+        {
+          if ((text_buffer.length() + buffer.length()) < size)
+          {
+            if (text_buffer != "")
+            {
+              text_buffer += " ";
+            }
+            text_buffer += buffer;
+            linee[counter] = text_buffer;
+          }
+          else
+          {
+            linee[counter] = text_buffer;
+            counter++;
+            linee[counter] = buffer;
+          }
+        }
+        else if (buffer.length() > size && counter < 10)
+        {
+          int division_size = (buffer.length() / size) + (buffer.length() % size > 0);
+          for (int i = 0; i < division_size; i++)
+          {
+            int end = (i <= (division_size - 2)) ? (size * (i + 1)) : buffer.length();
+            linee[counter] = buffer.substring(size * i, end);
+            counter++;
+          }
+          buffer = "";
+        }
+        else if ((text_buffer.length() + buffer.length()) < size && counter < 10)
+        {
+          if (text_buffer != "")
+          {
+            text_buffer += " ";
+          }
+          text_buffer += buffer;
+          buffer = "";
+        }
+        else
+        {
+          if (counter < 15)
+          {
+            linee[counter] = text_buffer;
+            counter++;
+            text_buffer = buffer;
+            buffer = "";
+          }
+          else
+          {
+            linee[15] = linee[15].substring(0, 5) + "...";
+            i = text.length() + 1;
+          }
+        }
+      }
+    }
+  }
+
+  void cleanText()
+  {
+    for (int i = 0; i < 16; i++)
+    {
+      linee[i] = "";
+    }
+  }
+
+  void notify(unsigned long time, String n_id, String n_title, String n_text)
+  {
+    time_start = time;
+    id = n_id;
+    title = n_title;
+    text = title + "             " + n_text;
+    titolo_size = int(title.length() / 13) + (title.length() % 13 != 0);
+    y_position = 0;
+    cleanText();
+    split_text(13);
+    text_size = 0;
+    for (int i = 0; i < 16; i++)
+    {
+      if (linee[i] != "")
+      {
+        text_size++;
+      }
+    }
+    if (sound)
+      tone(bzr, 4978, 75);
+    last_page = page(NOTIFY);
+  }
+
+  void render(int navigation)
+  {
+    if (millis() - time_start < 10000)
+    {
+      oled->firstPage();
+      do
+      {
+        oled->setDrawColor(1);
+        oled->setFont(u8g2_font_7x14B_tf);
+        oled->drawBox(0, 0, 18, 64);
+        oled->setDrawColor(0);
+        oled->drawXBM(2, 2, bell_width, bell_height, bell);
+        oled->setDrawColor(1);
+
+        int correction = 1;
+
+        for (int i = 0; i < 16; i++)
+        {
+          if (titolo_size == i)
+          {
+            correction++;
+            oled->setFont(u8g2_font_7x14_tf);
+          }
+          oled->drawUTF8(20, y_position + (15 * (i + correction)), linee[i].c_str());
+        }
+        //oled->setFont(u8g2_font_unifont_t_symbols);
+        oled->setFont(u8g2_font_7x14_tf);
+
+      } while (oled->nextPage());
+
+      switch (navigation)
+      {
+      case action(BACK):
+        y_position = 0;
+        last_page = page(HOME);
+        break;
+      case action(SELECT):
+        y_position = 0;
+        last_page = page(HOME);
+        break;
+      case action(RIGHT):
+        time_start = millis();
+        if (y_position > -(text_size * 1.5) * 10)
+        {
+          y_position -= 10;
+        }
+        break;
+      case action(LEFT):
+        time_start = millis();
+        if (y_position != 0)
+        {
+          y_position += 10;
+          break;
+        }
+      }
+    }
+    else
+    {
+      y_position = 0;
+      last_page = page(HOME);
+    }
+  }
+};
 
 struct Alarm
 {
@@ -371,8 +707,8 @@ struct Alarm
   U8G2 *oled;
   uint8 bzr;
 
-  int hour[3] = {8, 16, 16};
-  int min[3] = {15, 45, 0};
+  int hour[3] = {8, 9, 15};
+  int min[3] = {15, 15, 30};
   String t_w_day[3] = {"12345", "0123456", "12345"};
 
   int max_val = sizeof(hour) / sizeof(hour[0]) - 1; // max value to show
@@ -401,7 +737,8 @@ struct Alarm
     oled->firstPage();
     do
     {
-      oled->setFont(u8g2_font_unifont_t_symbols);
+      //oled->setFont(u8g2_font_unifont_t_symbols);
+      oled->setFont(u8g2_font_7x14_tf);
 
       oled->drawGlyph(15, 25, 0X23F0);
       oled->setCursor(40, 25);
@@ -638,7 +975,8 @@ struct Weather
     do
     {
 
-      oled->setFont(u8g2_font_unifont_t_symbols);
+      //oled->setFont(u8g2_font_unifont_t_symbols);
+      oled->setFont(u8g2_font_7x14_tf);
       int m_percent = map(meteo_inf[1], 0, 100, 0, 130);
       oled->drawRBox(-2, 18, m_percent, 4, 1);
 
@@ -688,16 +1026,20 @@ struct PageSystem
 
   Home *home;
   Menu *menu;
+  Settings *settings;
   Weather *weather;
   Alarm *alarm;
+  Notification *notification;
 
-  PageSystem(Home *h, Menu *m, Alarm *a, Weather *w)
+  PageSystem(Home *h, Menu *m, Settings *s, Alarm *a, Weather *w, Notification *n)
   {
     last_page = page(HOME);
     home = h;
     menu = m;
+    settings = s;
     alarm = a;
     weather = w;
+    notification = n;
   }
 
   void render(int navigation,
@@ -719,6 +1061,9 @@ struct PageSystem
     case MENU:
       menu->render(navigation);
       break;
+    case SETTINGS:
+      settings->render(navigation);
+      break;
     case ALARM:
       alarm->render(navigation);
       break;
@@ -727,6 +1072,9 @@ struct PageSystem
       break;
     case WEATHER:
       weather->render(navigation);
+      break;
+    case NOTIFY:
+      notification->render(navigation);
       break;
     default:
       home->set_time(minute, hour, t_w_day, t_day, t_month, t_year);

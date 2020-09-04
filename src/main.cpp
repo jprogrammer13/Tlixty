@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <ESP8266HTTPClient.h>
+#include <WiFiClient.h>
 #include <ESP8266WiFi.h>
 #include <Encoder.h>
 #include <NTPClient.h>
@@ -10,6 +11,12 @@
 #include <U8g2lib.h>
 #include <WiFiUdp.h>
 #include <time.h>
+#include <ESP8266WebServer.h>
+
+// SERVER
+
+ESP8266WebServer server(1518);
+void new_notification();
 
 // SIMULATOR FOR U8G2
 // https://p3dt.net/u8g2sim/
@@ -35,11 +42,13 @@ Navigation navigation = Navigation(&myEnc, slc, bck, bzr); // navigator declarat
 Boot bootanimation = Boot(&u8g2);
 Home home = Home(&u8g2); // Home declaration
 Menu menu = Menu(&u8g2);
+Settings settings = Settings(&u8g2);
 Alarm alarm = Alarm(&u8g2, bzr);
 Weather weather = Weather(&u8g2, &http_client);
+Notification notification = Notification(&u8g2, bzr);
 
 PageSystem page_render =
-    PageSystem(&home, &menu, &alarm, &weather); // Page Render System declaration
+    PageSystem(&home, &menu, &settings, &alarm, &weather, &notification); // Page Render System declaration
 
 int h = 0;
 int m = 0;
@@ -90,6 +99,11 @@ void setup()
     t_month = month(epoch);
     t_year = year(epoch);
     weather.get_data();
+
+    // WEBSERVER
+    Serial.println(WiFi.localIP().toString().c_str());
+    server.on("/notification", new_notification);
+    server.begin();
   }
 }
 
@@ -98,6 +112,7 @@ unsigned long time_allert = millis();
 
 void loop()
 {
+  server.handleClient();
 
   if ((millis() - time_start) >= 10000)
   {
@@ -128,4 +143,16 @@ void loop()
                      t_day,
                      t_month,
                      t_year); // render page system with navigation event
+}
+
+void new_notification()
+{
+  server.send(200, "text/plain", "Salvataggio effettuato correttamente. Riavvia SOMMM appena led rosso spento");
+  Serial.println(server.arg("notification"));
+
+  const size_t capacity = JSON_OBJECT_SIZE(3) + 768;
+  DynamicJsonDocument doc(capacity);
+
+  deserializeJson(doc, server.arg("notification"));
+  notification.notify(millis(),doc["id"], doc["title"],doc["text"]);
 }
