@@ -52,7 +52,7 @@ void dithering(int sx, int sy, int w, int h, int percent, int size, U8G2 *oled)
         }
         break;
 
-        // 25% (DARK GREY)
+        // 25% (LIGHT GREY)
     case (25):
 
         for (int y = sy; y < sy + h; y++)

@@ -11,6 +11,8 @@
 #include <SPI.h>
 #include <U8g2lib.h>
 
+// https://heydays.no/project/pebble
+
 enum page // page list with int identificator
 {
   HOME = 0,
@@ -501,25 +503,12 @@ struct Notification
   unsigned long time_start;
   int titolo_size;
   int text_size;
+  int animation_x;
+  bool animation;
   String id;
   String title;
   String text;
-  String linee[16] = {
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      "",
-      ""};
+  String linee[16] = {"", "", "", "", "", "", "", "", "", "", "", "", "", "", ""};
 
   Notification(U8G2 *ds, uint8 bz)
   {
@@ -529,6 +518,8 @@ struct Notification
     bzr = bz;
     titolo_size = 0;
     text_size = 0;
+    animation_x = 128;
+    animation = true;
   }
 
   void split_text(int size)
@@ -612,6 +603,34 @@ struct Notification
     }
   }
 
+  void app_icon(String id, int icon_selector)
+  {
+    if (id == "com.whatsapp")
+    {
+      switch (icon_selector)
+      {
+      case 0:
+        oled->drawXBM(42, 12, icon_big_width, icon_big_height, whatsapp_big);
+        break;
+      case 1:
+        oled->drawXBM(2, 25, icon_width, icon_height, whatsapp);
+        break;
+      }
+    }
+    else
+    {
+      switch (icon_selector)
+      {
+      case 0:
+        oled->drawXBM(42, 12, icon_big_width, icon_big_height, bell_big);
+        break;
+      case 1:
+        oled->drawXBM(2, 25, icon_width, icon_height, bell);
+        break;
+      }
+    }
+  }
+
   void notify(unsigned long time, String n_id, String n_title, String n_text)
   {
     time_start = time;
@@ -620,6 +639,8 @@ struct Notification
     text = title + "             " + n_text;
     titolo_size = int(title.length() / 13) + (title.length() % 13 != 0);
     y_position = 0;
+    animation_x = 128;
+    animation = true;
     cleanText();
     split_text(13);
     text_size = 0;
@@ -637,32 +658,44 @@ struct Notification
 
   void render(int navigation)
   {
-    if (millis() - time_start < 10000)
+    if (millis() - time_start < 16000)
     {
       oled->firstPage();
       do
       {
-        oled->setDrawColor(1);
-        oled->setFont(u8g2_font_7x14B_tf);
-        oled->drawBox(0, 0, 18, 64);
-        oled->setDrawColor(0);
-        oled->drawXBM(2, 2, bell_width, bell_height, bell);
-        oled->setDrawColor(1);
-
-        int correction = 1;
-
-        for (int i = 0; i < 16; i++)
+        if (millis() - time_start < 1000 && animation)
         {
-          if (titolo_size == i)
-          {
-            correction++;
-            oled->setFont(u8g2_font_7x14_tf);
-          }
-          oled->drawUTF8(20, y_position + (15 * (i + correction)), linee[i].c_str());
+          oled->drawBox(0, 0, animation_x, 64);
+          oled->setDrawColor(0);
+          app_icon(id, 0);
+          oled->setDrawColor(1);
         }
-        //oled->setFont(u8g2_font_unifont_t_symbols);
-        oled->setFont(u8g2_font_7x14_tf);
+        else
+        {
+          animation = false;
+          oled->setDrawColor(1);
+          oled->setFont(u8g2_font_7x14_tf);
+          oled->drawBox(0, 0, 18, 64);
+          oled->setDrawColor(0);
+          app_icon(id, 1);
+          oled->setDrawColor(1);
+          oled->setFont(u8g2_font_7x14B_tf);
 
+          int position = 15;
+
+          for (int i = 0; i < 16; i++)
+          {
+            if (titolo_size == i)
+            {
+              position += 5;
+              oled->setFont(u8g2_font_7x14_tf);
+            }
+            oled->drawUTF8(25, y_position + position, linee[i].c_str());
+            position += 15;
+          }
+          //oled->setFont(u8g2_font_unifont_t_symbols);
+          oled->setFont(u8g2_font_7x14_tf);
+        }
       } while (oled->nextPage());
 
       switch (navigation)
@@ -676,14 +709,20 @@ struct Notification
         last_page = page(HOME);
         break;
       case action(RIGHT):
-        time_start = millis();
+        if (!animation)
+        {
+          time_start = millis();
+        }
         if (y_position > -(text_size * 1.5) * 10)
         {
           y_position -= 10;
         }
         break;
       case action(LEFT):
-        time_start = millis();
+        if (!animation)
+        {
+          time_start = millis();
+        }
         if (y_position != 0)
         {
           y_position += 10;
