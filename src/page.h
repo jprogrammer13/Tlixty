@@ -13,7 +13,7 @@
 
 // https://heydays.no/project/pebble
 
-enum page // page list with int identificator
+enum page // page list with int identificatorobs
 {
   HOME = 0,
   MENU = 1,
@@ -1028,7 +1028,7 @@ struct Weather
       oled->setFont(u8g2_font_open_iconic_all_4x_t);
       oled->drawGlyph(10, 60, d_icon[key_condition]);
 
-      /*
+      
       oled->setFontMode(0);
       oled->setDrawColor(1);
       dithering(85, 0, 43, 64, 50, 1, oled);
@@ -1039,7 +1039,7 @@ struct Weather
 
       oled->drawRBox(3, 3, 85, 16, 8);
       oled->setDrawColor(1);
-      */
+      
     } while (oled->nextPage());
 
     switch (navigation)
