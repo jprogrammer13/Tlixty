@@ -12,6 +12,7 @@
 #include <U8g2lib.h>
 
 // https://heydays.no/project/pebble
+// https://github.com/PaulStoffregen/Encoder/issues/40
 
 enum page // page list with int identificatorobs
 {
