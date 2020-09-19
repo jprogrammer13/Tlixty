@@ -73,7 +73,7 @@ struct Boot
 
 struct Navigation
 {
-  Encoder *e;
+  uint8_t rx;
   uint8_t slc;
   uint8_t bck;
   uint8_t bzr;
@@ -81,9 +81,9 @@ struct Navigation
 
   // Encoder Object pointer, Select buttun pin, Back button pin
 
-  Navigation(Encoder *encoder, uint8_t select, uint8_t back, uint8_t buzzer)
+  Navigation(uint8_t right, uint8_t select, uint8_t back, uint8_t buzzer)
   {
-    e = encoder;
+    rx = right;
     slc = select;
     bck = back;
     bzr = buzzer;
@@ -93,40 +93,41 @@ struct Navigation
   {
     // MAPPA : 1 - RIGHT / 2 - LEFT / 3 - SELECT / 4 - BACK
 
-    int knob = e->read();
-    bool btn_slc = !digitalRead(slc);
-    bool btn_bck = !digitalRead(bck);
+    // int knob = e->read();
+    // bool btn_slc = !digitalRead(slc);
+    // bool btn_bck = !digitalRead(bck);
 
-    int result = 0;
+    int result = digitalRead(rx);
 
-    if (knob > 1)
-    {
-      result = action(RIGHT);
-      delay(d_time);
-    }
-    else if (knob < -1)
-    {
-      result = action(LEFT);
-      delay(d_time);
-    }
-    else if (btn_slc)
-    {
-      result = action(SELECT);
-      (sound) ? tone(bzr, 2000, d_time) : delay(d_time);
-      delay(d_time);
-    }
-    else if (btn_bck)
-    {
-      result = action(BACK);
-      (sound) ? tone(bzr, 1800, d_time) : delay(d_time);
-      delay(d_time);
-    }
-    else
-    {
-      result = 0;
-    }
+    // if (knob > 1)
+    // {
+    //   result = action(RIGHT);
+    //   delay(d_time);
+    // }
+    // else if (knob < -1)
+    // {
+    //   result = action(LEFT);
+    //   delay(d_time);
+    // }
+    // else if (btn_slc)
+    // {
+    //   result = action(SELECT);
+    //   (sound) ? tone(bzr, 2000, d_time) : delay(d_time);
+    //   delay(d_time);
+    // }
+    // else if (btn_bck)
+    // {
+    //   result = action(BACK);
+    //   (sound) ? tone(bzr, 1800, d_time) : delay(d_time);
+    //   delay(d_time);
+    // }
+    // else
+    // {
+    //   result = 0;
+    // }
 
-    e->write(0);
+    // e->write(0);
+
 
     return result;
   }
@@ -659,17 +660,21 @@ struct Notification
 
   void render(int navigation)
   {
-    if (millis() - time_start < 16000)
+    if (millis() - time_start < 20000)
     {
       oled->firstPage();
       do
       {
-        if (millis() - time_start < 1000 && animation)
+        if (millis() - time_start < 1200 && animation)
         {
           oled->drawBox(0, 0, animation_x, 64);
           oled->setDrawColor(0);
           app_icon(id, 0);
           oled->setDrawColor(1);
+          if (animation_x > 18 && millis() - time_start > 700)
+          {
+            animation_x--;
+          }
         }
         else
         {
@@ -1029,7 +1034,6 @@ struct Weather
       oled->setFont(u8g2_font_open_iconic_all_4x_t);
       oled->drawGlyph(10, 60, d_icon[key_condition]);
 
-      
       oled->setFontMode(0);
       oled->setDrawColor(1);
       dithering(85, 0, 43, 64, 50, 1, oled);
@@ -1040,7 +1044,7 @@ struct Weather
 
       oled->drawRBox(3, 3, 85, 16, 8);
       oled->setDrawColor(1);
-      
+
     } while (oled->nextPage());
 
     switch (navigation)

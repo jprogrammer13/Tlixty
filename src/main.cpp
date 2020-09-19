@@ -4,14 +4,19 @@
 #include <ESP8266HTTPClient.h>
 #include <WiFiClient.h>
 #include <ESP8266WiFi.h>
-#include <Encoder.h>
 #include <NTPClient.h>
 #include <SPI.h>
 #include <TimeLib.h>
 #include <U8g2lib.h>
 #include <WiFiUdp.h>
 #include <time.h>
+#include <AsyncDelay.h>
 #include <ESP8266WebServer.h>
+
+// FPS MANAGER
+
+AsyncDelay fps_manager;
+const int fps = 1000 / 30; //30FPS
 
 // SERVER
 
@@ -23,21 +28,21 @@ void new_notification();
 
 #define slc D3
 #define bck D4
-#define bzr D6
+#define rx D6
+#define bzr NULL
 
 // U8G2_ST7920_128X64_1_SW_SPI u8g2(U8G2_R0, /* clock=*/ D5, /* data=*/ D7, /*
 // CS=*/ D2, /*RS=*/ D0);
-U8G2_ST7920_128X64_1_HW_SPI u8g2(U8G2_R0, D8, D0);
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE, /* clock=*/D1, /* data=*/D2);
 
-const char *ssid = "FRITZ!Box 7490";
-const char *password = "RiccardoBussola13";
+const char *ssid = "Fastweb casa";
+const char *password = "0123401234";
 
 WiFiUDP ntpUDP;
 HTTPClient http_client;
 NTPClient timeClient(ntpUDP, "0.it.pool.ntp.org", 7200 /*OFFSET*/);
 
-Encoder myEnc(D1, D2);
-Navigation navigation = Navigation(&myEnc, slc, bck, bzr); // navigator declaration
+Navigation navigation = Navigation(rx, slc, bck, bzr); // navigator declaration
 
 Boot bootanimation = Boot(&u8g2);
 Home home = Home(&u8g2); // Home declaration
@@ -61,6 +66,7 @@ int epoch = 0;
 void setup()
 {
   u8g2.begin();
+  fps_manager.start(fps, AsyncDelay::MILLIS);
   bootanimation.render(); // bootanimation
 
   Serial.begin(115200);
@@ -134,15 +140,19 @@ void loop()
     alarm_off = 0;
   }
 
-  int nav_event = navigation.read(); // navigation event reading
+  if (fps_manager.isExpired())
+  {
+    int nav_event = navigation.read(); // navigation event reading
 
-  page_render.render(nav_event,
-                     m,
-                     h,
-                     t_w_day,
-                     t_day,
-                     t_month,
-                     t_year); // render page system with navigation event
+    page_render.render(nav_event,
+                       m,
+                       h,
+                       t_w_day,
+                       t_day,
+                       t_month,
+                       t_year); // render page system with navigation event
+    fps_manager.repeat();
+  }
 }
 
 void new_notification()
@@ -154,5 +164,5 @@ void new_notification()
   DynamicJsonDocument doc(capacity);
 
   deserializeJson(doc, server.arg("notification"));
-  notification.notify(millis(),doc["id"], doc["title"],doc["text"]);
+  notification.notify(millis(), doc["id"], doc["title"], doc["text"]);
 }
