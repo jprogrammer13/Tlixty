@@ -10,12 +10,14 @@
 #include <Encoder.h>
 #include <SPI.h>
 #include <U8g2lib.h>
+#include <TimeLib.h>
+#include <data.h>
 
 // https://heydays.no/project/pebble
-// https://github.com/PaulStoffregen/Encoder/issues/40
 
 enum page // page list with int identificatorobs
 {
+  TIMELINE = -1,
   HOME = 0,
   MENU = 1,
   SETTINGS = 2,
@@ -32,10 +34,10 @@ enum page // page list with int identificatorobs
 
 enum action // action list with int identificator
 {
-  RIGHT = 1,
+  BACK = 1,
   LEFT = 2,
   SELECT = 3,
-  BACK = 4
+  RIGHT = 4,
 };
 
 enum wf_title // watchface list with int identificator
@@ -43,7 +45,7 @@ enum wf_title // watchface list with int identificator
   DIGITAL = 0
 };
 
-bool sound = 0; // TO DO : Add this to settings struct
+bool sound = 1; // TO DO : Add this to settings struct
 
 int last_page = 0; // variable to remember the rendering page
 bool alarm_off = 0;
@@ -73,62 +75,80 @@ struct Boot
 
 struct Navigation
 {
-  Encoder *e;
-  uint8_t slc;
   uint8_t bck;
-  uint8_t bzr;
+  uint8_t lx;
+  uint8_t slc;
+  uint8_t rx;
+  uint8_t led;
   int d_time = 100;
 
   // Encoder Object pointer, Select buttun pin, Back button pin
 
-  Navigation(Encoder *encoder, uint8_t select, uint8_t back, uint8_t buzzer)
+  Navigation(uint8_t back, uint8_t left, uint8_t select, uint8_t right, uint8_t led_pin)
   {
-    e = encoder;
-    slc = select;
     bck = back;
-    bzr = buzzer;
+    lx = left;
+    slc = select;
+    rx = right;
+    led = led_pin;
   }
 
   int read()
   {
-    // MAPPA : 1 - RIGHT / 2 - LEFT / 3 - SELECT / 4 - BACK
 
-    int knob = e->read();
-    bool btn_slc = !digitalRead(slc);
-    bool btn_bck = !digitalRead(bck);
+    bool btn_back = digitalRead(bck);
+    bool btn_lx = digitalRead(lx);
+    bool btn_slc = digitalRead(slc);
+    bool btn_rx = digitalRead(rx);
+    bool btn[] = {digitalRead(bck), digitalRead(lx), digitalRead(slc), digitalRead(rx)};
 
     int result = 0;
 
-    if (knob > 1)
+    for (int i = 0; i < 4; i++)
     {
-      result = action(RIGHT);
-      delay(d_time);
+      if (btn[i])
+      {
+        result = i + 1;
+        delay(d_time);
+        i = 4;
+      }
     }
-    else if (knob < -1)
-    {
-      result = action(LEFT);
-      delay(d_time);
-    }
-    else if (btn_slc)
-    {
-      result = action(SELECT);
-      (sound) ? tone(bzr, 2000, d_time) : delay(d_time);
-      delay(d_time);
-    }
-    else if (btn_bck)
-    {
-      result = action(BACK);
-      (sound) ? tone(bzr, 1800, d_time) : delay(d_time);
-      delay(d_time);
-    }
-    else
-    {
-      result = 0;
-    }
-
-    e->write(0);
 
     return result;
+  }
+};
+
+/**
+ *  struct : Timeline
+ *  description: 
+ **/
+
+struct Timeline
+{
+
+  U8G2 *oled;
+  int index = 0;
+
+  Timeline(U8G2 *ds)
+  {
+    oled = ds;
+  }
+
+  void render(int navigation, int minute, int hour)
+  {
+    oled->firstPage();
+    do
+    {
+      oled->drawBox(118, 0, 10, 64);
+      oled->drawTriangle(118, 15, 118, 25, 113, 20);
+    } while (oled->nextPage());
+
+    switch (navigation)
+    {
+    case action(BACK):
+      last_page = page(HOME);
+      break;
+    }
   }
 };
 
@@ -244,6 +264,9 @@ struct Home
       break;
     case action(LEFT):
       last_page = page(WEATHER);
+      break;
+    case action(RIGHT):
+      last_page = page(TIMELINE);
       break;
     }
   }
@@ -608,27 +631,11 @@ struct Notification
   {
     if (id == "com.whatsapp")
     {
-      switch (icon_selector)
-      {
-      case 0:
-        oled->drawXBM(42, 12, icon_big_width, icon_big_height, whatsapp_big);
-        break;
-      case 1:
-        oled->drawXBM(2, 25, icon_width, icon_height, whatsapp);
-        break;
-      }
+      (icon_selector == 0) ? (oled->drawXBM(42, 12, icon_big_width, icon_big_height, whatsapp_big)) : (oled->drawXBM(2, 25, icon_width, icon_height, whatsapp));
     }
     else
     {
-      switch (icon_selector)
-      {
-      case 0:
-        oled->drawXBM(42, 12, icon_big_width, icon_big_height, bell_big);
-        break;
-      case 1:
-        oled->drawXBM(2, 25, icon_width, icon_height, bell);
-        break;
-      }
+      (icon_selector == 0) ? (oled->drawXBM(42, 12, icon_big_width, icon_big_height, gen_notification_big)) : (oled->drawXBM(2, 25, icon_width, icon_height, gen_notification));
     }
   }
 
@@ -659,17 +666,21 @@ struct Notification
 
   void render(int navigation)
   {
-    if (millis() - time_start < 16000)
+    if (millis() - time_start < 20000)
     {
       oled->firstPage();
       do
       {
-        if (millis() - time_start < 1000 && animation)
+        if (millis() - time_start < 1200 && animation)
         {
           oled->drawBox(0, 0, animation_x, 64);
           oled->setDrawColor(0);
           app_icon(id, 0);
           oled->setDrawColor(1);
+          if (animation_x > 18 && millis() - time_start > 700)
+          {
+            animation_x--;
+          }
         }
         else
         {
@@ -953,6 +964,7 @@ struct Weather
                       0 /*main_temp_max*/};
 
   String payload = "";
+  String description = "";
 
   Weather(U8G2 *ds, HTTPClient *http)
   {
@@ -989,11 +1001,26 @@ struct Weather
 
       JsonObject weather_0 = doc["weather"][0];
       const char *weather_0_description = weather_0["description"];
+      description = String(weather_0_description);
       JsonObject main = doc["main"];
       meteo_inf[0] = int(main["temp"]);
       meteo_inf[1] = main["humidity"];      // 44
       meteo_inf[2] = int(main["temp_min"]); // 25.56
       meteo_inf[3] = int(main["temp_max"]); // 28.89
+
+      JsonObject sys = doc["sys"];
+      long sys_sunrise = sys["sunrise"]; // 1600664556
+      long sys_sunset = sys["sunset"];   // 1600708588
+
+      // events_name[sunrise_h] = "Sunrise";
+      // events_time[sunrise_h] = String(hour(time_t(sys_sunrise)))+":"+String(minute(time_t(sys_sunrise)));
+      clean_events();
+      new_event("Sunrise", hour(time_t(sys_sunrise)), minute(time_t(sys_sunrise)));
+      new_event("Sunset", hour(time_t(sys_sunset)), minute(time_t(sys_sunset)));
+      print_events();
+
+      // events_name[sunset_h] = "Sunset";
+      // events_time[sunset_h] = String(hour(time_t(sys_sunset)))+":"+String(minute(time_t(sys_sunset)));
 
       while (key_condition < 9)
       {
@@ -1017,30 +1044,24 @@ struct Weather
 
       //oled->setFont(u8g2_font_unifont_t_symbols);
       oled->setFont(u8g2_font_7x14_tf);
-      int m_percent = map(meteo_inf[1], 0, 100, 0, 130);
-      oled->drawRBox(-2, 18, m_percent, 4, 1);
 
-      oled->setCursor(0, 10);
+      oled->setCursor(0, 13);
       oled->print(city[city_selector]);
-
+      oled->drawHLine(0, 16, 128);
       oled->setFont(u8g2_font_helvR24_tf);
-      oled->setCursor(55, 60);
+      oled->setCursor(0, 45);
       oled->print(String(meteo_inf[0]));
+      oled->setFont(u8g2_font_6x10_tf);
+      oled->setCursor(0, 55);
+      oled->print("LW:" + String(meteo_inf[2]));
+      oled->setCursor(40, 55);
+      oled->print("HI:" + String(meteo_inf[3]));
+      oled->setCursor(0, 64);
+      oled->print(description);
+
       oled->setFont(u8g2_font_open_iconic_all_4x_t);
-      oled->drawGlyph(10, 60, d_icon[key_condition]);
+      oled->drawGlyph(90, 60, d_icon[key_condition]);
 
-      
-      oled->setFontMode(0);
-      oled->setDrawColor(1);
-      dithering(85, 0, 43, 64, 50, 1, oled);
-      dithering(0, 0, 128, 21, 75, 1, oled);
-      oled->drawHLine(0, 21, 128);
-
-      oled->setDrawColor(0);
-
-      oled->drawRBox(3, 3, 85, 16, 8);
-      oled->setDrawColor(1);
-      
     } while (oled->nextPage());
 
     switch (navigation)
@@ -1064,6 +1085,7 @@ struct Weather
 struct PageSystem
 {
 
+  Timeline *timeline;
   Home *home;
   Menu *menu;
   Settings *settings;
@@ -1071,9 +1093,10 @@ struct PageSystem
   Alarm *alarm;
   Notification *notification;
 
-  PageSystem(Home *h, Menu *m, Settings *s, Alarm *a, Weather *w, Notification *n)
+  PageSystem(Timeline *t, Home *h, Menu *m, Settings *s, Alarm *a, Weather *w, Notification *n)
   {
     last_page = page(HOME);
+    timeline = t;
     home = h;
     menu = m;
     settings = s;
@@ -1094,6 +1117,9 @@ struct PageSystem
 
     switch (last_page)
     {
+    case TIMELINE:
+      timeline->render(navigation, minute, hour);
+      break;
     case HOME:
       home->set_time(minute, hour, t_w_day, t_day, t_month, t_year);
       home->render(navigation);
