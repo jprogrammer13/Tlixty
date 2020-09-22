@@ -144,6 +144,7 @@ struct Timeline
 
   U8G2 *oled;
   int index = 0;
+  bool skip_past = 1;
 
   Timeline(U8G2 *ds)
   {
@@ -152,17 +153,91 @@ struct Timeline
 
   void render(int navigation, int minute, int hour)
   {
+
+    int last_index = last_events_index();
+
+    if (skip_past)
+    {
+      index = 0;
+
+      for (int i = 0; i < last_index; i++)
+      {
+        int e_time = events_time[i].substring(0.2).toInt();
+        if (hour > e_time)
+        {
+          index++;
+        }
+        else if (hour == e_time)
+        {
+          int e_minute = events_time[i].substring(3.5).toInt();
+          if (minute > e_minute)
+          {
+            index++;
+          }
+        }
+        else if (hour)
+        {
+          i = last_events_index();
+        }
+      }
+
+      skip_past = 0;
+    }
+
     oled->firstPage();
     do
     {
-      oled->drawBox(118, 0, 10, 64);
-      oled->drawTriangle(118, 15, 118, 25, 113, 20);
+
+      String c_time = events_time[index];
+      String c_title = (events_name[index].length() > 11) ? events_name[index].substring(0, 10) + ".." : events_name[index];
+      int c_icon = events_icon[index];
+
+      if (last_index == 0)
+      {
+        c_time = "No events";
+      }else if(c_title == ""){
+        c_time = "Events ended";
+      }
+
+      oled->setDrawColor(1);
+      oled->drawBox(110, 0, 18, 64);
+      oled->drawTriangle(110, 10, 110, 20, 105, 15);
+      oled->setDrawColor(0);
+
+      oled->setFont(u8g2_font_open_iconic_all_2x_t);
+      oled->drawGlyph(111, 24, c_icon);
+
+      oled->setDrawColor(1);
+      oled->setFont(u8g2_font_7x14B_tf);
+      oled->drawUTF8(8, 20, c_time.c_str());
+      oled->setFont(u8g2_font_7x14_tf);
+      oled->drawUTF8(8, 35, c_title.c_str());
+
+      if (last_index - index > 1)
+      {
+        oled->drawUTF8(10, 55, "...");
+      }
+
     } while (oled->nextPage());
 
     switch (navigation)
     {
     case action(BACK):
+      index = 0;
+      skip_past = 1;
       last_page = page(HOME);
+      break;
+    case action(RIGHT):
+      if (index != (last_index - 1))
+      {
+        index++;
+      }
+      break;
+    case action(LEFT):
+      if (index > 0)
+      {
+        index--;
+      }
       break;
     }
   }
@@ -1020,23 +1095,22 @@ struct Weather
       description = String(weather_0_description);
       JsonObject main = doc["main"];
       meteo_inf[0] = int(main["temp"]);
-      meteo_inf[1] = main["humidity"];      // 44
-      meteo_inf[2] = int(main["temp_min"]); // 25.56
-      meteo_inf[3] = int(main["temp_max"]); // 28.89
+      meteo_inf[1] = main["humidity"];
+      meteo_inf[2] = int(main["temp_min"]);
+      meteo_inf[3] = int(main["temp_max"]);
 
       JsonObject sys = doc["sys"];
-      long sys_sunrise = sys["sunrise"]; // 1600664556
-      long sys_sunset = sys["sunset"];   // 1600708588
+      long sys_sunrise = sys["sunrise"];
+      long sys_sunset = sys["sunset"];
 
-      // events_name[sunrise_h] = "Sunrise";
-      // events_time[sunrise_h] = String(hour(time_t(sys_sunrise)))+":"+String(minute(time_t(sys_sunrise)));
+      
+
       clean_events();
-      new_event("Sunrise", hour(time_t(sys_sunrise)), minute(time_t(sys_sunrise)));
-      new_event("Sunset", hour(time_t(sys_sunset)), minute(time_t(sys_sunset)));
-      print_events();
 
-      // events_name[sunset_h] = "Sunset";
-      // events_time[sunset_h] = String(hour(time_t(sys_sunset)))+":"+String(minute(time_t(sys_sunset)));
+      new_event("Sunrise", hour(time_t(sys_sunrise)), minute(time_t(sys_sunrise)), "Today's sunrise is expected at" + hour(time_t(sys_sunrise)) + minute(time_t(sys_sunrise)), 0x0103);
+      new_event("Sunset", hour(time_t(sys_sunset)), minute(time_t(sys_sunset)), "Today's sunset is expected at" + hour(time_t(sys_sunset)) + minute(time_t(sys_sunset)), 0x00df);
+      
+      // TO DO : add parsing of json events from phone
 
       while (key_condition < 9)
       {
