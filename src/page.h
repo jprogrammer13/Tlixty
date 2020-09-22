@@ -45,7 +45,7 @@ enum wf_title // watchface list with int identificator
   DIGITAL = 0
 };
 
-bool sound = 1; // TO DO : Add this to settings struct
+bool sound = 0; // TO DO : Add this to settings struct
 
 int last_page = 0; // variable to remember the rendering page
 bool alarm_off = 0;
@@ -75,44 +75,60 @@ struct Boot
 
 struct Navigation
 {
-  uint8_t bck;
-  uint8_t lx;
+  Encoder *e;
   uint8_t slc;
-  uint8_t rx;
-  uint8_t led;
+  uint8_t bck;
+  uint8_t bzr;
   int d_time = 100;
 
   // Encoder Object pointer, Select buttun pin, Back button pin
 
-  Navigation(uint8_t back, uint8_t left, uint8_t select, uint8_t right, uint8_t led_pin)
+  Navigation(Encoder *encoder, uint8_t select, uint8_t back, uint8_t buzzer)
   {
-    bck = back;
-    lx = left;
+    e = encoder;
     slc = select;
-    rx = right;
-    led = led_pin;
+    bck = back;
+    bzr = buzzer;
   }
 
   int read()
   {
+    // MAPPA : 1 - RIGHT / 2 - LEFT / 3 - SELECT / 4 - BACK
 
-    bool btn_back = digitalRead(bck);
-    bool btn_lx = digitalRead(lx);
-    bool btn_slc = digitalRead(slc);
-    bool btn_rx = digitalRead(rx);
-    bool btn[] = {digitalRead(bck), digitalRead(lx), digitalRead(slc), digitalRead(rx)};
+    int knob = e->read();
+    bool btn_slc = !digitalRead(slc);
+    bool btn_bck = !digitalRead(bck);
 
     int result = 0;
 
-    for (int i = 0; i < 4; i++)
+    if (knob > 1)
     {
-      if (btn[i])
-      {
-        result = i + 1;
-        delay(d_time);
-        i = 4;
-      }
+      result = action(RIGHT);
+      delay(d_time);
     }
+    else if (knob < -1)
+    {
+      result = action(LEFT);
+      delay(d_time);
+    }
+    else if (btn_slc)
+    {
+      result = action(SELECT);
+      (sound) ? tone(bzr, 2000, d_time) : delay(d_time);
+      delay(d_time);
+    }
+    else if (btn_bck)
+    {
+      result = action(BACK);
+      (sound) ? tone(bzr, 1800, d_time) : delay(d_time);
+      delay(d_time);
+    }
+    else
+    {
+      result = 0;
+    }
+
+    e->write(0);
 
     return result;
   }

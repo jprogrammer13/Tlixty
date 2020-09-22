@@ -3,6 +3,7 @@
 #include <ArduinoJson.h>
 #include <ESP8266HTTPClient.h>
 #include <WiFiClient.h>
+#include <Encoder.h>
 #include <ESP8266WiFi.h>
 #include <NTPClient.h>
 #include <SPI.h>
@@ -26,15 +27,13 @@ void new_notification();
 // SIMULATOR FOR U8G2
 // https://p3dt.net/u8g2sim/
 
-#define bck D6
-#define lx D5
-#define slc D8
-#define rx D0
-#define led D7
+#define slc D3
+#define bck D4
+#define bzr D6
 
 // U8G2_ST7920_128X64_1_SW_SPI u8g2(U8G2_R0, /* clock=*/ D5, /* data=*/ D7, /*
 // CS=*/ D2, /*RS=*/ D0);
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE, /* clock=*/D1, /* data=*/D2);
+U8G2_ST7920_128X64_1_HW_SPI u8g2(U8G2_R0, D8, D0);
 
 const char *ssid = "TIM-19861131";
 const char *password = "BussolaGay";
@@ -42,17 +41,17 @@ const char *password = "BussolaGay";
 WiFiUDP ntpUDP;
 HTTPClient http_client;
 NTPClient timeClient(ntpUDP, "0.it.pool.ntp.org", 7200 /*OFFSET*/);
-
-Navigation navigation = Navigation(bck, lx, slc, rx, led); // navigator declaration
+Encoder myEnc(D1, D2);
+Navigation navigation = Navigation(&myEnc, slc, bck, bzr); // navigator declaration
 
 Boot bootanimation = Boot(&u8g2);
 Timeline timeline = Timeline(&u8g2);
 Home home = Home(&u8g2);
 Menu menu = Menu(&u8g2);
 Settings settings = Settings(&u8g2);
-Alarm alarm = Alarm(&u8g2, led);
+Alarm alarm = Alarm(&u8g2, bzr);
 Weather weather = Weather(&u8g2, &http_client);
-Notification notification = Notification(&u8g2, led);
+Notification notification = Notification(&u8g2, bzr);
 
 PageSystem page_render =
     PageSystem(&timeline, &home, &menu, &settings, &alarm, &weather, &notification); // Page Render System declaration
@@ -73,12 +72,10 @@ void setup()
   bootanimation.render(); // bootanimation
 
   Serial.begin(115200);
-
-  pinMode(bck, INPUT_PULLUP);
-  pinMode(lx, INPUT_PULLUP);
+  
   pinMode(slc, INPUT_PULLUP);
-  pinMode(rx, INPUT_PULLUP);
-  pinMode(led, OUTPUT);
+  pinMode(bck, INPUT_PULLUP);
+  pinMode(bzr, OUTPUT);
 
   WiFi.begin(ssid, password);
 
