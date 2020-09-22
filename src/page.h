@@ -50,7 +50,6 @@ bool sound = 1; // TO DO : Add this to settings struct
 int last_page = 0; // variable to remember the rendering page
 bool alarm_off = 0;
 
-
 struct Boot
 {
   U8G2 *oled;
@@ -133,7 +132,6 @@ struct Timeline
   Timeline(U8G2 *ds)
   {
     oled = ds;
-
   }
 
   void render(int navigation, int minute, int hour)
@@ -1014,13 +1012,15 @@ struct Weather
       long sys_sunrise = sys["sunrise"]; // 1600664556
       long sys_sunset = sys["sunset"];   // 1600708588
 
+      // events_name[sunrise_h] = "Sunrise";
+      // events_time[sunrise_h] = String(hour(time_t(sys_sunrise)))+":"+String(minute(time_t(sys_sunrise)));
+      clean_events();
+      new_event("Sunrise", hour(time_t(sys_sunrise)), minute(time_t(sys_sunrise)));
+      new_event("Sunset", hour(time_t(sys_sunset)), minute(time_t(sys_sunset)));
+      print_events();
 
-      events_name[sunrise_h] = "Sunrise";
-      events_time[sunrise_h] = String(hour(time_t(sys_sunrise)))+":"+String(minute(time_t(sys_sunrise)));
-
-
-      events_name[sunset_h] = "Sunset";
-      events_time[sunset_h] = String(hour(time_t(sys_sunset)))+":"+String(minute(time_t(sys_sunset)));
+      // events_name[sunset_h] = "Sunset";
+      // events_time[sunset_h] = String(hour(time_t(sys_sunset)))+":"+String(minute(time_t(sys_sunset)));
 
       while (key_condition < 9)
       {

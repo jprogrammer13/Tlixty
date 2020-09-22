@@ -36,8 +36,8 @@ void new_notification();
 // CS=*/ D2, /*RS=*/ D0);
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE, /* clock=*/D1, /* data=*/D2);
 
-const char *ssid = "FRITZ!Box 7490";
-const char *password = "RiccardoBussola13";
+const char *ssid = "TIM-19861131";
+const char *password = "BussolaGay";
 
 WiFiUDP ntpUDP;
 HTTPClient http_client;
