@@ -195,7 +195,9 @@ struct Timeline
       if (last_index == 0)
       {
         c_time = "No events";
-      }else if(c_title == ""){
+      }
+      else if (c_title == "")
+      {
         c_time = "Events ended";
       }
 
@@ -724,6 +726,14 @@ struct Notification
     {
       (icon_selector == 0) ? (oled->drawXBM(42, 12, icon_big_width, icon_big_height, whatsapp_big)) : (oled->drawXBM(2, 25, icon_width, icon_height, whatsapp));
     }
+    else if (id == "org.thunderdog.challegram" || id == "org.telegram.messanger")
+    {
+      (icon_selector == 0) ? (oled->drawXBM(42, 12, icon_big_width, icon_big_height, telegram_big)) : (oled->drawXBM(2, 25, icon_width, icon_height, telegram));
+    }
+    else if (id == "com.instagram.android")
+    {
+      (icon_selector == 0) ? (oled->drawXBM(42, 12, icon_big_width, icon_big_height, instagram_big)) : (oled->drawXBM(2, 25, icon_width, icon_height, instagram));
+    }
     else
     {
       (icon_selector == 0) ? (oled->drawXBM(42, 12, icon_big_width, icon_big_height, gen_notification_big)) : (oled->drawXBM(2, 25, icon_width, icon_height, gen_notification));
@@ -1103,13 +1113,11 @@ struct Weather
       long sys_sunrise = sys["sunrise"];
       long sys_sunset = sys["sunset"];
 
-      
-
       clean_events();
 
       new_event("Sunrise", hour(time_t(sys_sunrise)), minute(time_t(sys_sunrise)), "Today's sunrise is expected at" + hour(time_t(sys_sunrise)) + minute(time_t(sys_sunrise)), 0x0103);
       new_event("Sunset", hour(time_t(sys_sunset)), minute(time_t(sys_sunset)), "Today's sunset is expected at" + hour(time_t(sys_sunset)) + minute(time_t(sys_sunset)), 0x00df);
-      
+
       // TO DO : add parsing of json events from phone
 
       while (key_condition < 9)
