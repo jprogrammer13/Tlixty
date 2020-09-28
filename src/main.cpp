@@ -72,7 +72,7 @@ void setup()
   bootanimation.render(); // bootanimation
 
   Serial.begin(115200);
-  
+
   pinMode(slc, INPUT_PULLUP);
   pinMode(bck, INPUT_PULLUP);
   pinMode(bzr, OUTPUT);
@@ -166,5 +166,13 @@ void new_notification()
   DynamicJsonDocument doc(capacity);
 
   deserializeJson(doc, server.arg("notification"));
-  notification.notify(millis(), doc["id"], doc["title"], doc["text"]);
+  if (last_page != NOTIFY)
+  {
+    notification.multiple_notification = false;
+    notification.notify(millis(), doc["id"], doc["title"], doc["text"]);
+  }
+  else
+  {
+    notification.multiple_notification = true;
+  }
 }

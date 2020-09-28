@@ -622,6 +622,7 @@ struct Notification
   int text_size;
   int animation_x;
   bool animation;
+  bool multiple_notification;
   String id;
   String title;
   String text;
@@ -637,6 +638,7 @@ struct Notification
     text_size = 0;
     animation_x = 128;
     animation = true;
+    multiple_notification = false;
   }
 
   void split_text(int size)
@@ -790,6 +792,10 @@ struct Notification
           oled->setFont(u8g2_font_7x14_tf);
           oled->drawBox(0, 0, 18, 64);
           oled->setDrawColor(0);
+          if (multiple_notification)
+          {
+            oled->drawDisc(8, 8, 2);
+          }
           app_icon(id, 1);
           oled->setDrawColor(1);
           oled->setFont(u8g2_font_7x14B_tf);
@@ -1143,18 +1149,18 @@ struct Weather
       //oled->setFont(u8g2_font_unifont_t_symbols);
       oled->setFont(u8g2_font_7x14_tf);
 
-      oled->setCursor(0, 13);
+      oled->setCursor(2, 13);
       oled->print(city[city_selector]);
       oled->drawHLine(0, 16, 128);
       oled->setFont(u8g2_font_helvR24_tf);
-      oled->setCursor(0, 45);
+      oled->setCursor(18, 45);
       oled->print(String(meteo_inf[0]));
       oled->setFont(u8g2_font_6x10_tf);
-      oled->setCursor(0, 55);
+      oled->setCursor(2, 55);
       oled->print("LW:" + String(meteo_inf[2]));
-      oled->setCursor(40, 55);
+      oled->setCursor(42, 55);
       oled->print("HI:" + String(meteo_inf[3]));
-      oled->setCursor(0, 64);
+      oled->setCursor(2, 63);
       oled->print(description);
 
       oled->setFont(u8g2_font_open_iconic_all_4x_t);
