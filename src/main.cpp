@@ -16,7 +16,7 @@
 // FPS MANAGER
 
 AsyncDelay fps_manager;
-const int fps = 1000 / 30; //30FPS
+const int fps = 1000 / 60; //30FPS
 
 // SERVER
 
@@ -169,5 +169,13 @@ void new_notification()
   DynamicJsonDocument doc(capacity);
 
   deserializeJson(doc, server.arg("notification"));
-  notification.notify(millis(), doc["id"], doc["title"], doc["text"]);
+  if (last_page != NOTIFY)
+  {
+    notification.multiple_notification = false;
+    notification.notify(millis(), doc["id"], doc["title"], doc["text"]);
+  }
+  else
+  {
+    notification.multiple_notification = true;
+  }
 }

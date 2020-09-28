@@ -127,7 +127,7 @@ struct Timeline
 {
 
   U8G2 *oled;
-  int index = 0;
+  int index = 0;  bool skip_past = 1;
 
   Timeline(U8G2 *ds)
   {
@@ -136,17 +136,93 @@ struct Timeline
 
   void render(int navigation, int minute, int hour)
   {
+
+    int last_index = last_events_index();
+
+    if (skip_past)
+    {
+      index = 0;
+
+      for (int i = 0; i < last_index; i++)
+      {
+        int e_time = events_time[i].substring(0.2).toInt();
+        if (hour > e_time)
+        {
+          index++;
+        }
+        else if (hour == e_time)
+        {
+          int e_minute = events_time[i].substring(3.5).toInt();
+          if (minute > e_minute)
+          {
+            index++;
+          }
+        }
+        else if (hour)
+        {
+          i = last_events_index();
+        }
+      }
+
+      skip_past = 0;
+    }
+
     oled->firstPage();
     do
     {
-      oled->drawBox(118, 0, 10, 64);
-      oled->drawTriangle(118, 15, 118, 25, 113, 20);
+
+      String c_time = events_time[index];
+      String c_title = (events_name[index].length() > 11) ? events_name[index].substring(0, 10) + ".." : events_name[index];
+      int c_icon = events_icon[index];
+
+      if (last_index == 0)
+      {
+        c_time = "No events";
+      }
+      else if (c_title == "")
+      {
+        c_time = "Events ended";
+      }
+
+      oled->setDrawColor(1);
+      oled->drawBox(110, 0, 18, 64);
+      oled->drawTriangle(110, 10, 110, 20, 105, 15);
+      oled->setDrawColor(0);
+
+      oled->setFont(u8g2_font_open_iconic_all_2x_t);
+      oled->drawGlyph(111, 24, c_icon);
+
+      oled->setDrawColor(1);
+      oled->setFont(u8g2_font_7x14B_tf);
+      oled->drawUTF8(8, 20, c_time.c_str());
+      oled->setFont(u8g2_font_7x14_tf);
+      oled->drawUTF8(8, 35, c_title.c_str());
+
+      if (last_index - index > 1)
+      {
+        oled->drawUTF8(10, 55, "...");
+      }
+
     } while (oled->nextPage());
 
     switch (navigation)
     {
     case action(BACK):
+      index = 0;
+      skip_past = 1;
       last_page = page(HOME);
+      break;
+    case action(RIGHT):
+      if (index != (last_index - 1))
+      {
+        index++;
+      }
+      break;
+    case action(LEFT):
+      if (index > 0)
+      {
+        index--;
+      }
       break;
     }
   }
@@ -529,6 +605,7 @@ struct Notification
   int text_size;
   int animation_x;
   bool animation;
+  bool multiple_notification;
   String id;
   String title;
   String text;
@@ -544,6 +621,7 @@ struct Notification
     text_size = 0;
     animation_x = 128;
     animation = true;
+    multiple_notification = false;
   }
 
   void split_text(int size)
@@ -633,6 +711,14 @@ struct Notification
     {
       (icon_selector == 0) ? (oled->drawXBM(42, 12, icon_big_width, icon_big_height, whatsapp_big)) : (oled->drawXBM(2, 25, icon_width, icon_height, whatsapp));
     }
+    else if (id == "org.thunderdog.challegram" || id == "org.telegram.messanger")
+    {
+      (icon_selector == 0) ? (oled->drawXBM(42, 12, icon_big_width, icon_big_height, telegram_big)) : (oled->drawXBM(2, 25, icon_width, icon_height, telegram));
+    }
+    else if (id == "com.instagram.android")
+    {
+      (icon_selector == 0) ? (oled->drawXBM(42, 12, icon_big_width, icon_big_height, instagram_big)) : (oled->drawXBM(2, 25, icon_width, icon_height, instagram));
+    }
     else
     {
       (icon_selector == 0) ? (oled->drawXBM(42, 12, icon_big_width, icon_big_height, gen_notification_big)) : (oled->drawXBM(2, 25, icon_width, icon_height, gen_notification));
@@ -671,7 +757,7 @@ struct Notification
       oled->firstPage();
       do
       {
-        if (millis() - time_start < 1200 && animation)
+        if (millis() - time_start < 1000 && animation)
         {
           oled->drawBox(0, 0, animation_x, 64);
           oled->setDrawColor(0);
@@ -679,7 +765,7 @@ struct Notification
           oled->setDrawColor(1);
           if (animation_x > 18 && millis() - time_start > 700)
           {
-            animation_x--;
+            animation_x-=12;
           }
         }
         else
@@ -689,6 +775,9 @@ struct Notification
           oled->setFont(u8g2_font_7x14_tf);
           oled->drawBox(0, 0, 18, 64);
           oled->setDrawColor(0);
+          if(multiple_notification){
+            oled->drawDisc(8,8,2);
+          }
           app_icon(id, 1);
           oled->setDrawColor(1);
           oled->setFont(u8g2_font_7x14B_tf);
@@ -1012,15 +1101,11 @@ struct Weather
       long sys_sunrise = sys["sunrise"]; // 1600664556
       long sys_sunset = sys["sunset"];   // 1600708588
 
-      // events_name[sunrise_h] = "Sunrise";
-      // events_time[sunrise_h] = String(hour(time_t(sys_sunrise)))+":"+String(minute(time_t(sys_sunrise)));
       clean_events();
-      new_event("Sunrise", hour(time_t(sys_sunrise)), minute(time_t(sys_sunrise)));
-      new_event("Sunset", hour(time_t(sys_sunset)), minute(time_t(sys_sunset)));
-      print_events();
 
-      // events_name[sunset_h] = "Sunset";
-      // events_time[sunset_h] = String(hour(time_t(sys_sunset)))+":"+String(minute(time_t(sys_sunset)));
+      new_event("Sunrise", hour(time_t(sys_sunrise)), minute(time_t(sys_sunrise)), "Today's sunrise is expected at" + hour(time_t(sys_sunrise)) + minute(time_t(sys_sunrise)), 0x0103);
+      new_event("Sunset", hour(time_t(sys_sunset)), minute(time_t(sys_sunset)), "Today's sunset is expected at" + hour(time_t(sys_sunset)) + minute(time_t(sys_sunset)), 0x00df);
+
 
       while (key_condition < 9)
       {
@@ -1045,18 +1130,18 @@ struct Weather
       //oled->setFont(u8g2_font_unifont_t_symbols);
       oled->setFont(u8g2_font_7x14_tf);
 
-      oled->setCursor(0, 13);
+      oled->setCursor(2, 13);
       oled->print(city[city_selector]);
       oled->drawHLine(0, 16, 128);
       oled->setFont(u8g2_font_helvR24_tf);
-      oled->setCursor(0, 45);
+      oled->setCursor(18, 45);
       oled->print(String(meteo_inf[0]));
       oled->setFont(u8g2_font_6x10_tf);
-      oled->setCursor(0, 55);
+      oled->setCursor(2, 55);
       oled->print("LW:" + String(meteo_inf[2]));
-      oled->setCursor(40, 55);
+      oled->setCursor(42, 55);
       oled->print("HI:" + String(meteo_inf[3]));
-      oled->setCursor(0, 64);
+      oled->setCursor(2, 63);
       oled->print(description);
 
       oled->setFont(u8g2_font_open_iconic_all_4x_t);
