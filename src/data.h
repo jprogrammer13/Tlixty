@@ -68,7 +68,7 @@ void insert_event(int i, String name, int h, int m, String descriptions, int ico
     events_icon[i] = icon;
 }
 
-bool new_event(String name, int h, int m, String descriptions, int icon)
+void new_event(String name, int h, int m, String descriptions, int icon)
 {
     int index_last = last_events_index();
 

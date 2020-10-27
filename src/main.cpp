@@ -14,6 +14,8 @@
 #include <AsyncDelay.h>
 #include <ESP8266WebServer.h>
 
+ESP8266WiFiClass wifi;
+
 // FPS MANAGER
 
 AsyncDelay fps_manager;
@@ -40,7 +42,7 @@ const char *password = "BussolaGay";
 
 WiFiUDP ntpUDP;
 HTTPClient http_client;
-NTPClient timeClient(ntpUDP, "0.it.pool.ntp.org", 7200 /*OFFSET*/);
+NTPClient timeClient(ntpUDP, "0.it.pool.ntp.org", 3600 /*OFFSET*/);
 Encoder myEnc(D1, D2);
 Navigation navigation = Navigation(&myEnc, slc, bck, bzr); // navigator declaration
 
@@ -48,7 +50,7 @@ Boot bootanimation = Boot(&u8g2);
 Timeline timeline = Timeline(&u8g2);
 Home home = Home(&u8g2);
 Menu menu = Menu(&u8g2);
-Settings settings = Settings(&u8g2);
+Settings settings = Settings(&u8g2, &wifi);
 Alarm alarm = Alarm(&u8g2, bzr);
 Weather weather = Weather(&u8g2, &http_client);
 Notification notification = Notification(&u8g2, bzr);
@@ -77,13 +79,13 @@ void setup()
   pinMode(bck, INPUT_PULLUP);
   pinMode(bzr, OUTPUT);
 
-  WiFi.begin(ssid, password);
+  wifi.mode(WIFI_STA);
+  wifi.begin(ssid, password);
 
-  unsigned long start_c = millis();
-  unsigned long soglia =
-      300000; // soglia di controllo per passare il AP (default 25s)
+  const unsigned long start_c = millis();
+  const unsigned long soglia = 300000; // soglia di controllo per passare il AP (default 25s)
 
-  while (WiFi.status() != WL_CONNECTED)
+  while (wifi.status() != WL_CONNECTED)
   {
     if (millis() - start_c < soglia)
     {
@@ -95,7 +97,7 @@ void setup()
     }
   }
 
-  if (WiFi.status() == WL_CONNECTED)
+  if (wifi.status() == WL_CONNECTED)
   {
     timeClient.begin();
     timeClient.update();
@@ -109,7 +111,10 @@ void setup()
     weather.get_data();
 
     // WEBSERVER
-    Serial.println(WiFi.localIP().toString().c_str());
+    Serial.println(wifi.macAddress());
+    Serial.println(wifi.hostname().c_str());
+    Serial.println(wifi.localIP().toString().c_str());
+
     server.on("/notification", new_notification);
     server.begin();
   }
@@ -133,13 +138,13 @@ void loop()
     t_month = month(epoch);
     t_year = year(epoch);
     time_start = millis();
-    weather.get_data();
   }
 
   if ((millis() - time_allert) >= 120000)
   {
     time_allert = millis();
     alarm_off = 0;
+    weather.get_data();
   }
 
   if (fps_manager.isExpired())
@@ -159,7 +164,7 @@ void loop()
 
 void new_notification()
 {
-  server.send(200, "text/plain", "Salvataggio effettuato correttamente. Riavvia SOMMM appena led rosso spento");
+  server.send(200, "text/plain", "Notifica ricevuta!");
   Serial.println(server.arg("notification"));
 
   const size_t capacity = JSON_OBJECT_SIZE(3) + 768;

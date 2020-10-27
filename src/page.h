@@ -5,6 +5,7 @@
 #include "img.h"
 #include "icon.h"
 #include <Arduino.h>
+#include <ESP8266WiFi.h>
 #include <ArduinoJson.h>
 #include <ESP8266HTTPClient.h>
 #include <Encoder.h>
@@ -373,9 +374,9 @@ struct Home
 struct Settings
 {
   U8G2 *oled;
+  ESP8266WiFiClass *wifi;
 
-  char *s_list[7] = {"CIAO2", "CIAO2", "CIAO3", "CIAO4",
-                     "CIAO5", "CIAO6", "CIAO7"}; // page's title list
+  char *s_list[7];
 
   /*    JUST TO UNDERSTAND THE PAGE POSITION (m_position+2)
 
@@ -401,13 +402,23 @@ struct Settings
 
   // U8G2 pointer to manage the display
 
-  Settings(U8G2 *ds) { oled = ds; }
+  Settings(U8G2 *ds, ESP8266WiFiClass *_wifi)
+  {
+    oled = ds;
+    wifi = _wifi;
+  }
 
   // this function render the menu ui, manage the input event and redirect to
   // other pages
 
   void render(int navigation)
   {
+
+    String ip_addr = wifi->localIP().toString();
+    char _ip_addr[15];
+    ip_addr.toCharArray(_ip_addr, sizeof(_ip_addr));
+    s_list[0] = _ip_addr;
+
     oled->firstPage();
     //oled->setFont(u8g2_font_unifont_t_symbols);
     oled->setFont(u8g2_font_7x14_tf);
@@ -865,11 +876,11 @@ struct Alarm
   U8G2 *oled;
   uint8 bzr;
 
-  int hour[3] = {8, 9, 15};
-  int min[3] = {15, 15, 30};
-  String t_w_day[3] = {"12345", "0123456", "12345"};
+  int hour[] = {};                   // 10
+  int min[] = {};                    // 19
+  String t_w_day[] = {}; // "123456"
 
-  int max_val = sizeof(hour) / sizeof(hour[0]) - 1; // max value to show
+  int max_val = sizeof(hour) / sizeof(int) - 1; // max value to show
 
   int m_position = 0;
   int cordinate[4] = {16, 37, 57};
@@ -895,8 +906,8 @@ struct Alarm
     oled->firstPage();
     do
     {
-      //oled->setFont(u8g2_font_unifont_t_symbols);
-      oled->setFont(u8g2_font_7x14_tf);
+      oled->setFont(u8g2_font_unifont_t_symbols);
+      // oled->setFont(u8g2_font_7x14_tf);
 
       oled->drawGlyph(15, 25, 0X23F0);
       oled->setCursor(40, 25);
@@ -922,7 +933,7 @@ struct Alarm
     bool is_time = 0;
     bool is_day = 0;
 
-    for (int i = 0; i < sizeof(hour) / sizeof(hour[0]); i++)
+    for (int i = 0; i < sizeof(hour) / sizeof(int); i++)
     {
       //Serial.println(String(hour[i]) + ":" + String(min[i]));
 
@@ -963,63 +974,74 @@ struct Alarm
     oled->firstPage();
     do
     {
-      oled->setFontMode(0);
-      String sveglia = "";
 
-      if (m_position == 0)
+      if (sizeof(hour) / sizeof(int) > 0)
       {
-        oled->setDrawColor(1); /* color 1 for the box */
-        oled->drawBox(0, 0, 128, 21);
+        oled->setFontMode(0);
+        String sveglia = "";
 
-        for (int i = 0; i < 3; i++)
+        if (m_position == 0)
         {
-          sveglia = String(hour[i]) + ":" + String(min[i]);
-          (i == 0) ? oled->setDrawColor(0) : oled->setDrawColor(1);
-          for (int j = 0; j < t_w_day[i].length() - 1; j++)
+          oled->setDrawColor(1); /* color 1 for the box */
+          oled->drawBox(0, 0, 128, 21);
+
+          for (int i = 0; i < 3; i++)
           {
-            oled->drawDisc(50 + (13 * j), cordinate[i] - 5, 4, U8G2_DRAW_ALL);
+            sveglia = String(hour[i]) + ":" + String(min[i]);
+            (i == 0) ? oled->setDrawColor(0) : oled->setDrawColor(1);
+            for (int j = 0; j < t_w_day[i].length() - 1; j++)
+            {
+              oled->drawDisc(50 + (13 * j), cordinate[i] - 5, 4, U8G2_DRAW_ALL);
+            }
+            //oled->drawGlyph(0, cordinate[i], icon[i]);
+            oled->setCursor(2, cordinate[i]);
+            oled->print(sveglia);
           }
-          //oled->drawGlyph(0, cordinate[i], icon[i]);
-          oled->setCursor(2, cordinate[i]);
-          oled->print(sveglia);
         }
-      }
-      else if (m_position == max_val)
-      {
-        oled->setDrawColor(1); /* color 1 for the box */
-        oled->drawBox(0, 42, 128, 21);
-
-        for (int i = max_val, j = 2; i > max_val - 3, j >= 0; i--, j--)
+        else if (m_position == max_val)
         {
-          sveglia = String(hour[i]) + ":" + String(min[i]);
-          (i == max_val) ? oled->setDrawColor(0) : oled->setDrawColor(1);
-          for (int j = 0; j < t_w_day[i].length() - 1; j++)
+          oled->setDrawColor(1); /* color 1 for the box */
+          oled->drawBox(0, 42, 128, 21);
+
+          for (int i = max_val, j = 2; i > max_val - 3, j >= 0; i--, j--)
           {
-            oled->drawDisc(50 + (13 * j), cordinate[i] - 5, 4, U8G2_DRAW_ALL);
+            sveglia = String(hour[i]) + ":" + String(min[i]);
+            (i == max_val) ? oled->setDrawColor(0) : oled->setDrawColor(1);
+            for (int j = 0; j < t_w_day[i].length() - 1; j++)
+            {
+              oled->drawDisc(50 + (13 * j), cordinate[i] - 5, 4, U8G2_DRAW_ALL);
+            }
+            //oled->drawGlyph(0, cordinate[j], icon[i]);
+            oled->setCursor(2, cordinate[j]);
+            oled->print(sveglia);
           }
-          //oled->drawGlyph(0, cordinate[j], icon[i]);
-          oled->setCursor(2, cordinate[j]);
-          oled->print(sveglia);
+        }
+        else
+        {
+          oled->setDrawColor(1); /* color 1 for the box */
+          oled->drawBox(0, 21, 128, 21);
+
+          for (int i = m_position - 1, j = 0; i < m_position + 2, j < 3;
+               i++, j++)
+          {
+            sveglia = String(hour[i]) + ":" + String(min[i]);
+            (i == m_position) ? oled->setDrawColor(0) : oled->setDrawColor(1);
+            for (int j = 0; j < t_w_day[i].length() - 1; j++)
+            {
+              oled->drawDisc(50 + (13 * j), cordinate[i] - 5, 4, U8G2_DRAW_ALL);
+            }
+            //oled->drawGlyph(0, cordinate[j], icon[i]);
+            oled->setCursor(2, cordinate[j]);
+            oled->print(sveglia);
+          }
         }
       }
       else
       {
-        oled->setDrawColor(1); /* color 1 for the box */
-        oled->drawBox(0, 21, 128, 21);
-
-        for (int i = m_position - 1, j = 0; i < m_position + 2, j < 3;
-             i++, j++)
-        {
-          sveglia = String(hour[i]) + ":" + String(min[i]);
-          (i == m_position) ? oled->setDrawColor(0) : oled->setDrawColor(1);
-          for (int j = 0; j < t_w_day[i].length() - 1; j++)
-          {
-            oled->drawDisc(50 + (13 * j), cordinate[i] - 5, 4, U8G2_DRAW_ALL);
-          }
-          //oled->drawGlyph(0, cordinate[j], icon[i]);
-          oled->setCursor(2, cordinate[j]);
-          oled->print(sveglia);
-        }
+        oled->setCursor(20, 25);
+        oled->print("Nessuna");
+        oled->setCursor(45, 45);
+        oled->print("sveglia");
       }
 
     } while (oled->nextPage());
