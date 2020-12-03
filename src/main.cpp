@@ -37,8 +37,8 @@ void new_notification();
 // CS=*/ D2, /*RS=*/ D0);
 U8G2_ST7920_128X64_1_HW_SPI u8g2(U8G2_R0, D8, D0);
 
-const char *ssid = "TIM-19861131";
-const char *password = "BussolaGay";
+const char *ssid = "WIFI_SSID";
+const char *password = "WIFI_PSWD";
 
 WiFiUDP ntpUDP;
 HTTPClient http_client;
