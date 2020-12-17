@@ -15,6 +15,8 @@
 
 // FPS MANAGER
 
+ESP8266WiFiClass wifi;
+
 AsyncDelay fps_manager;
 const int fps = 1000 / 30; //30FPS
 
@@ -36,12 +38,12 @@ void new_notification();
 // CS=*/ D2, /*RS=*/ D0);
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE, /* clock=*/D1, /* data=*/D2);
 
-const char *ssid = "TIM-19861131";
-const char *password = "BussolaGay";
+const char *ssid = "Fastweb casa";
+const char *password = "0123401234";
 
 WiFiUDP ntpUDP;
 HTTPClient http_client;
-NTPClient timeClient(ntpUDP, "0.it.pool.ntp.org", 7200 /*OFFSET*/);
+NTPClient timeClient(ntpUDP, "0.it.pool.ntp.org", offset /*OFFSET*/);
 
 Navigation navigation = Navigation(bck, lx, slc, rx, led); // navigator declaration
 
@@ -49,7 +51,7 @@ Boot bootanimation = Boot(&u8g2);
 Timeline timeline = Timeline(&u8g2);
 Home home = Home(&u8g2);
 Menu menu = Menu(&u8g2);
-Settings settings = Settings(&u8g2);
+Settings settings = Settings(&u8g2, &wifi);
 Alarm alarm = Alarm(&u8g2, led);
 Weather weather = Weather(&u8g2, &http_client);
 Notification notification = Notification(&u8g2, led);
@@ -80,13 +82,13 @@ void setup()
   pinMode(rx, INPUT_PULLUP);
   pinMode(led, OUTPUT);
 
-  WiFi.begin(ssid, password);
+  wifi.begin(ssid, password);
 
   unsigned long start_c = millis();
   unsigned long soglia =
       300000; // soglia di controllo per passare il AP (default 25s)
 
-  while (WiFi.status() != WL_CONNECTED)
+  while (wifi.status() != WL_CONNECTED)
   {
     if (millis() - start_c < soglia)
     {
@@ -98,7 +100,7 @@ void setup()
     }
   }
 
-  if (WiFi.status() == WL_CONNECTED)
+  if (wifi.status() == WL_CONNECTED)
   {
     timeClient.begin();
     timeClient.update();
@@ -112,7 +114,7 @@ void setup()
     weather.get_data();
 
     // WEBSERVER
-    Serial.println(WiFi.localIP().toString().c_str());
+    Serial.println(wifi.localIP().toString().c_str());
     server.on("/notification", new_notification);
     server.begin();
   }
