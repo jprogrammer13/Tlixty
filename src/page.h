@@ -130,8 +130,12 @@ struct Timeline
 {
 
   U8G2 *oled;
+<<<<<<< HEAD
   int index = 0;
   bool skip_past = 1;
+=======
+  int index = 0;  bool skip_past = 1;
+>>>>>>> 9fd51bc7a498d8a383b2b3fe4cb08a458a0d90a7
 
   Timeline(U8G2 *ds)
   {
@@ -617,6 +621,7 @@ struct Notification
   int text_size;
   int animation_x;
   bool animation;
+  bool multiple_notification;
   String id;
   String title;
   String text;
@@ -632,6 +637,7 @@ struct Notification
     text_size = 0;
     animation_x = 128;
     animation = true;
+    multiple_notification = false;
   }
 
   void split_text(int size)
@@ -769,7 +775,7 @@ struct Notification
       oled->firstPage();
       do
       {
-        if (millis() - time_start < 1200 && animation)
+        if (millis() - time_start < 1000 && animation)
         {
           oled->drawBox(0, 0, animation_x, 64);
           oled->setDrawColor(0);
@@ -777,7 +783,7 @@ struct Notification
           oled->setDrawColor(1);
           if (animation_x > 18 && millis() - time_start > 700)
           {
-            animation_x--;
+            animation_x-=12;
           }
         }
         else
@@ -787,6 +793,9 @@ struct Notification
           oled->setFont(u8g2_font_7x14_tf);
           oled->drawBox(0, 0, 18, 64);
           oled->setDrawColor(0);
+          if(multiple_notification){
+            oled->drawDisc(8,8,2);
+          }
           app_icon(id, 1);
           oled->setDrawColor(1);
           oled->setFont(u8g2_font_7x14B_tf);
@@ -1112,10 +1121,16 @@ struct Weather
 
       clean_events();
 
+<<<<<<< HEAD
       new_event("Sunrise", hour(time_t(sys_sunrise)+offset), minute(time_t(sys_sunrise)+offset), "Today's sunrise is expected at" + hour(time_t(sys_sunrise)+offset) + minute(time_t(sys_sunrise)+offset), 0x0103);
       new_event("Sunset", hour(time_t(sys_sunset)+offset), minute(time_t(sys_sunset)+offset), "Today's sunset is expected at" + hour(time_t(sys_sunset)+offset) + minute(time_t(sys_sunset)+offset), 0x00df);
 
       // TO DO : add parsing of json events from phone
+=======
+      new_event("Sunrise", hour(time_t(sys_sunrise)), minute(time_t(sys_sunrise)), "Today's sunrise is expected at" + hour(time_t(sys_sunrise)) + minute(time_t(sys_sunrise)), 0x0103);
+      new_event("Sunset", hour(time_t(sys_sunset)), minute(time_t(sys_sunset)), "Today's sunset is expected at" + hour(time_t(sys_sunset)) + minute(time_t(sys_sunset)), 0x00df);
+
+>>>>>>> 9fd51bc7a498d8a383b2b3fe4cb08a458a0d90a7
 
       while (key_condition < 9)
       {
