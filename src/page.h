@@ -1,5 +1,6 @@
 #ifndef PAGE_H
 #define PAGE_H
+#define HOUR 3600
 
 #include "graphic.h"
 #include "img.h"
@@ -13,6 +14,8 @@
 #include <U8g2lib.h>
 #include <TimeLib.h>
 #include <data.h>
+
+int offset = HOUR*2;
 
 // https://heydays.no/project/pebble
 
@@ -421,7 +424,7 @@ struct Settings
 
     oled->firstPage();
     //oled->setFont(u8g2_font_unifont_t_symbols);
-    oled->setFont(u8g2_font_7x14_tf);
+    oled->setFont(u8g2_font_5x7_tf);
     do
     {
       oled->setFontMode(0);
@@ -436,7 +439,7 @@ struct Settings
           (i == 0) ? oled->setDrawColor(0) : oled->setDrawColor(1);
           oled->setFont(u8g2_font_unifont_t_symbols);
           oled->drawGlyph(3, cordinate[i], icon[i]);
-          oled->setFont(u8g2_font_7x14_tf);
+          oled->setFont(u8g2_font_5x7_tf);
           oled->setCursor(23, cordinate[i]);
           oled->print(s_list[i]);
         }
@@ -451,7 +454,7 @@ struct Settings
           (i == max_val) ? oled->setDrawColor(0) : oled->setDrawColor(1);
           oled->setFont(u8g2_font_unifont_t_symbols);
           oled->drawGlyph(3, cordinate[j], icon[i]);
-          oled->setFont(u8g2_font_7x14_tf);
+          oled->setFont(u8g2_font_5x7_tf);
           oled->setCursor(23, cordinate[j]);
           oled->print(s_list[i]);
         }
@@ -467,7 +470,7 @@ struct Settings
           (i == s_position) ? oled->setDrawColor(0) : oled->setDrawColor(1);
           oled->setFont(u8g2_font_unifont_t_symbols);
           oled->drawGlyph(3, cordinate[j], icon[i]);
-          oled->setFont(u8g2_font_7x14_tf);
+          oled->setFont(u8g2_font_5x7_tf);
           oled->setCursor(23, cordinate[j]);
           oled->print(s_list[i]);
         }
@@ -876,8 +879,8 @@ struct Alarm
   U8G2 *oled;
   uint8 bzr;
 
-  int hour[] = {};                   // 10
-  int min[] = {};                    // 19
+  int hour[] = {};       // 10
+  int min[] = {};        // 19
   String t_w_day[] = {}; // "123456"
 
   int max_val = sizeof(hour) / sizeof(int) - 1; // max value to show
@@ -1143,8 +1146,8 @@ struct Weather
 
       clean_events();
 
-      new_event("Sunrise", hour(time_t(sys_sunrise)), minute(time_t(sys_sunrise)), "Today's sunrise is expected at" + hour(time_t(sys_sunrise)) + minute(time_t(sys_sunrise)), 0x0103);
-      new_event("Sunset", hour(time_t(sys_sunset)), minute(time_t(sys_sunset)), "Today's sunset is expected at" + hour(time_t(sys_sunset)) + minute(time_t(sys_sunset)), 0x00df);
+      new_event("Sunrise", hour(time_t(sys_sunrise) + offset), minute(time_t(sys_sunrise) + offset), "Today's sunrise is expected at" + hour(time_t(sys_sunrise) + offset) + minute(time_t(sys_sunrise) + offset), 0x0103);
+      new_event("Sunset", hour(time_t(sys_sunset) + offset), minute(time_t(sys_sunset) + offset), "Today's sunset is expected at" + hour(time_t(sys_sunset) + offset) + minute(time_t(sys_sunset) + offset), 0x00df);
 
       // TO DO : add parsing of json events from phone
 

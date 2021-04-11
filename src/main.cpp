@@ -19,7 +19,7 @@ ESP8266WiFiClass wifi;
 // FPS MANAGER
 
 AsyncDelay fps_manager;
-const int fps = 1000 / 30; //30FPS
+const int fps = 1000 / 60; //30FPS
 
 // SERVER
 
@@ -37,12 +37,12 @@ void new_notification();
 // CS=*/ D2, /*RS=*/ D0);
 U8G2_ST7920_128X64_1_HW_SPI u8g2(U8G2_R0, D8, D0);
 
-const char *ssid = "WIFI_SSID";
-const char *password = "WIFI_PSWD";
+const char *ssid = "ssid";
+const char *password = "password";
 
 WiFiUDP ntpUDP;
 HTTPClient http_client;
-NTPClient timeClient(ntpUDP, "0.it.pool.ntp.org", 3600 /*OFFSET*/);
+NTPClient timeClient(ntpUDP, "0.it.pool.ntp.org", offset /*OFFSET*/);
 Encoder myEnc(D1, D2);
 Navigation navigation = Navigation(&myEnc, slc, bck, bzr); // navigator declaration
 
